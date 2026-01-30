@@ -1,0 +1,110 @@
+/* Hamburger Menu */
+.hamburger-menu {
+  position: relative;
+}
+
+.hamburger-button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 44px;
+  height: 44px;
+  padding: var(--spacing-sm);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.hamburger-button:hover {
+  background-color: var(--color-primary-light);
+}
+
+.hamburger-line {
+  display: block;
+  width: 24px;
+  height: 3px;
+  background-color: var(--color-text-primary);
+  border-radius: var(--radius-full);
+  transition: background-color var(--transition-fast);
+}
+
+.hamburger-button:hover .hamburger-line {
+  background-color: var(--color-primary);
+}
+
+/* Menu Panel */
+.menu-panel {
+  position: absolute;
+  top: calc(100% + var(--spacing-sm));
+  right: 0;
+  min-width: 280px;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: menuFadeIn 0.15s ease-out;
+  z-index: 100;
+}
+
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.menu-header {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background-color: var(--color-background);
+}
+
+.menu-user-name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.menu-user-email {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+.menu-divider {
+  height: 1px;
+  background-color: var(--color-border);
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.menu-item:hover {
+  background-color: var(--color-background);
+}
+
+.menu-item-logout {
+  color: var(--color-error);
+}
+
+.menu-item-logout:hover {
+  background-color: var(--color-error-light);
+}
