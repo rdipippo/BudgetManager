@@ -232,4 +232,53 @@ export const TransactionController = {
       res.status(500).json({ error: 'Failed to delete transaction' });
     }
   },
+
+  async bulkUpdate(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.userId) {
+        res.status(401).json({ error: 'Not authenticated' });
+        return;
+      }
+
+      const { transactionIds, categoryId, notes, date } = req.body;
+
+      if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+        res.status(400).json({ error: 'transactionIds must be a non-empty array' });
+        return;
+      }
+
+      if (transactionIds.length > 100) {
+        res.status(400).json({ error: 'Cannot update more than 100 transactions at once' });
+        return;
+      }
+
+      // Validate category if provided
+      if (categoryId !== undefined && categoryId !== null) {
+        const category = await CategoryModel.findByIdAndUser(categoryId, req.userId);
+        if (!category) {
+          res.status(400).json({ error: 'Category not found' });
+          return;
+        }
+      }
+
+      const updates: { category_id?: number | null; notes?: string | null; date?: string } = {};
+      if (categoryId !== undefined) updates.category_id = categoryId;
+      if (notes !== undefined) updates.notes = notes || null;
+      if (date !== undefined) updates.date = date;
+
+      const affectedRows = await TransactionModel.updateMultiple(
+        req.userId,
+        transactionIds.map((id: string | number) => parseInt(String(id))),
+        updates
+      );
+
+      res.json({
+        message: `Updated ${affectedRows} transaction(s)`,
+        affectedRows,
+      });
+    } catch (error) {
+      console.error('Bulk update transactions error:', error);
+      res.status(500).json({ error: 'Failed to update transactions' });
+    }
+  },
 };

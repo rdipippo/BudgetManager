@@ -26,8 +26,13 @@ export const budgetService = {
     return response.data.budgets;
   },
 
-  async getSummary(): Promise<BudgetSummary> {
-    const response = await api.get<BudgetSummary>('/budgets/summary');
+  async getSummary(year?: number, month?: number): Promise<BudgetSummary> {
+    const params = new URLSearchParams();
+    if (year) params.append('year', String(year));
+    if (month) params.append('month', String(month));
+    const queryString = params.toString();
+    const url = queryString ? `/budgets/summary?${queryString}` : '/budgets/summary';
+    const response = await api.get<BudgetSummary>(url);
     return response.data;
   },
 

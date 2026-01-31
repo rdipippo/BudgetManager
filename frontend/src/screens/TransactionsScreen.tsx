@@ -43,6 +43,15 @@ export const TransactionsScreen: React.FC = () => {
   const [deleting, setDeleting] = useState(false);
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
+  // Multi-select state
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkEditModalOpen, setBulkEditModalOpen] = useState(false);
+  const [bulkCategoryId, setBulkCategoryId] = useState<number | null | undefined>(undefined);
+  const [bulkNotes, setBulkNotes] = useState<string | undefined>(undefined);
+  const [bulkDate, setBulkDate] = useState<string | undefined>(undefined);
+  const [bulkSaving, setBulkSaving] = useState(false);
+
   const hasActiveFilters = search || selectedCategoryId !== undefined || selectedAccountId || startDate || endDate;
 
   const loadTransactions = useCallback(async (append = false) => {
@@ -111,6 +120,13 @@ export const TransactionsScreen: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [search, selectedCategoryId, selectedAccountId, startDate, endDate]);
 
+  // Clear selections when exiting selection mode or when transactions change
+  useEffect(() => {
+    if (!selectionMode) {
+      setSelectedIds(new Set());
+    }
+  }, [selectionMode]);
+
   const handleCategoryClick = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
     setCategoryModalOpen(true);
@@ -159,6 +175,7 @@ export const TransactionsScreen: React.FC = () => {
   };
 
   const openEditModal = (transaction: Transaction) => {
+    if (selectionMode) return; // Don't open edit modal in selection mode
     setEditingTransaction(transaction);
     setFormAmount(Math.abs(transaction.amount).toString());
     setFormDate(transaction.date.split('T')[0]);
@@ -235,17 +252,110 @@ export const TransactionsScreen: React.FC = () => {
     }
   };
 
+  // Multi-select handlers
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    setSelectedIds(new Set());
+  };
+
+  const handleSelectionChange = (id: number, isSelected: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (isSelected) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === transactions.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(transactions.map((t) => t.id)));
+    }
+  };
+
+  const openBulkEditModal = () => {
+    setBulkCategoryId(undefined);
+    setBulkNotes(undefined);
+    setBulkDate(undefined);
+    setBulkEditModalOpen(true);
+  };
+
+  const handleBulkUpdate = async () => {
+    if (selectedIds.size === 0) return;
+
+    try {
+      setBulkSaving(true);
+      const updates: { categoryId?: number | null; notes?: string | null; date?: string } = {};
+
+      if (bulkCategoryId !== undefined) {
+        updates.categoryId = bulkCategoryId;
+      }
+      if (bulkNotes !== undefined) {
+        updates.notes = bulkNotes || null;
+      }
+      if (bulkDate !== undefined && bulkDate !== '') {
+        updates.date = bulkDate;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        setError(t('bulkEdit.noChanges', 'Please make at least one change'));
+        setBulkSaving(false);
+        return;
+      }
+
+      await transactionService.bulkUpdate(Array.from(selectedIds), updates);
+      setBulkEditModalOpen(false);
+      setSelectionMode(false);
+      setSelectedIds(new Set());
+      loadTransactions();
+    } catch (err) {
+      setError(t('bulkEdit.error', 'Failed to update transactions'));
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
+  const isAllSelected = transactions.length > 0 && selectedIds.size === transactions.length;
+  const isSomeSelected = selectedIds.size > 0 && selectedIds.size < transactions.length;
+
   return (
     <div className="screen screen-with-nav">
       <div className="transactions-header">
         <h1>{t('transactions.title', 'Transactions')}</h1>
-        <Button
-          variant="primary"
-          onClick={openCreateModal}
-        >
-          +
-        </Button>
+        <div className="transactions-header-actions">
+          <Button
+            variant={selectionMode ? 'primary' : 'secondary'}
+            onClick={toggleSelectionMode}
+          >
+            {selectionMode ? t('transactions.done', 'Done') : t('transactions.select', 'Select')}
+          </Button>
+          {!selectionMode && (
+            <Button
+              variant="primary"
+              onClick={openCreateModal}
+            >
+              +
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Bulk action toolbar */}
+      {selectionMode && selectedIds.size > 0 && (
+        <div className="bulk-actions-toolbar">
+          <span className="bulk-actions-count">
+            {t('bulkEdit.selected', '{{count}} selected', { count: selectedIds.size })}
+          </span>
+          <Button variant="primary" onClick={openBulkEditModal}>
+            {t('bulkEdit.edit', 'Edit Selected')}
+          </Button>
+        </div>
+      )}
 
       <div className="transactions-filters">
         <div className="filters-row">
@@ -255,8 +365,6 @@ export const TransactionsScreen: React.FC = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-        </div>
-        <div className="filters-row">
           <select
             className="filter-select"
             value={selectedCategoryId === undefined ? '' : selectedCategoryId === null ? 'uncategorized' : selectedCategoryId}
@@ -269,7 +377,7 @@ export const TransactionsScreen: React.FC = () => {
           >
             <option value="">{t('transactions.allCategories', 'All Categories')}</option>
             <option value="uncategorized">{t('transactions.uncategorized', 'Uncategorized')}</option>
-            {categories.filter((c) => !c.is_income).map((cat) => (
+            {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
@@ -285,10 +393,7 @@ export const TransactionsScreen: React.FC = () => {
               </option>
             ))}
           </select>
-        </div>
-        <div className="filters-row filters-row-dates">
           <div className="date-filter">
-            <label>{t('transactions.from', 'From')}</label>
             <input
               type="date"
               className="date-input"
@@ -296,8 +401,10 @@ export const TransactionsScreen: React.FC = () => {
               onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
+
+            <label style={{paddingTop: "10px"}}>{t('transactions.to', 'To')}</label>
+
           <div className="date-filter">
-            <label>{t('transactions.to', 'To')}</label>
             <input
               type="date"
               className="date-input"
@@ -336,8 +443,21 @@ export const TransactionsScreen: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className="transaction-list">
-            <div className="transaction-list-header">
+          <div className={`transaction-list ${selectionMode ? 'transaction-list-selectable' : ''}`}>
+            <div className={`transaction-list-header ${selectionMode ? 'transaction-list-header-selectable' : ''}`}>
+              {selectionMode && (
+                <div className="transaction-list-header-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    ref={(input) => {
+                      if (input) input.indeterminate = isSomeSelected;
+                    }}
+                    onChange={handleSelectAll}
+                    className="checkbox"
+                  />
+                </div>
+              )}
               <div>{t('transactions.name', 'Name')}</div>
               <div>{t('transactions.date', 'Date')}</div>
               <div>{t('transactions.category', 'Category')}</div>
@@ -347,8 +467,11 @@ export const TransactionsScreen: React.FC = () => {
               <TransactionItem
                 key={transaction.id}
                 transaction={transaction}
-                onClick={() => openEditModal(transaction)}
-                onCategoryClick={() => handleCategoryClick(transaction)}
+                onClick={selectionMode ? undefined : () => openEditModal(transaction)}
+                onCategoryClick={selectionMode ? undefined : () => handleCategoryClick(transaction)}
+                selectable={selectionMode}
+                selected={selectedIds.has(transaction.id)}
+                onSelectionChange={handleSelectionChange}
               />
             ))}
           </div>
@@ -380,7 +503,7 @@ export const TransactionsScreen: React.FC = () => {
             <span className="category-picker-dot" style={{ backgroundColor: '#6B7280' }} />
             {t('transactions.uncategorized', 'Uncategorized')}
           </button>
-          {categories.filter((c) => !c.is_income).map((category) => (
+          {categories.map((category) => (
             <button
               key={category.id}
               className={`category-picker-item ${selectedTransaction?.category_id === category.id ? 'active' : ''}`}
@@ -472,7 +595,7 @@ export const TransactionsScreen: React.FC = () => {
               onChange={(e) => setFormCategoryId(e.target.value ? parseInt(e.target.value) : null)}
             >
               <option value="">{t('transactionForm.uncategorized', 'Uncategorized')}</option>
-              {categories.filter((c) => !c.is_income).map((cat) => (
+              {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
@@ -487,6 +610,76 @@ export const TransactionsScreen: React.FC = () => {
               placeholder={t('transactionForm.notesPlaceholder', 'Add any notes...')}
               rows={3}
             />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Edit Modal */}
+      <Modal
+        isOpen={bulkEditModalOpen}
+        onClose={() => setBulkEditModalOpen(false)}
+        title={t('bulkEdit.title', 'Edit {{count}} Transactions', { count: selectedIds.size })}
+        footer={
+          <div className="modal-actions">
+            <Button variant="secondary" onClick={() => setBulkEditModalOpen(false)}>
+              {t('common.cancel', 'Cancel')}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleBulkUpdate}
+              loading={bulkSaving}
+            >
+              {t('bulkEdit.apply', 'Apply Changes')}
+            </Button>
+          </div>
+        }
+      >
+        <div className="bulk-edit-form">
+          <p className="bulk-edit-hint">
+            {t('bulkEdit.hint', 'Only fill in the fields you want to change. Empty fields will not be modified.')}
+          </p>
+
+          <div className="form-field">
+            <label className="input-label">{t('bulkEdit.category', 'Category')}</label>
+            <select
+              className="category-select"
+              value={bulkCategoryId === undefined ? '' : bulkCategoryId === null ? 'uncategorized' : bulkCategoryId}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '') setBulkCategoryId(undefined);
+                else if (val === 'uncategorized') setBulkCategoryId(null);
+                else setBulkCategoryId(parseInt(val));
+              }}
+            >
+              <option value="">{t('bulkEdit.noChange', '-- No change --')}</option>
+              <option value="uncategorized">{t('transactions.uncategorized', 'Uncategorized')}</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-field">
+            <label className="input-label">{t('bulkEdit.date', 'Date')}</label>
+            <input
+              type="date"
+              className="date-input bulk-edit-date"
+              value={bulkDate || ''}
+              onChange={(e) => setBulkDate(e.target.value || undefined)}
+            />
+            <span className="form-help">{t('bulkEdit.dateHelp', 'Leave empty to keep original dates')}</span>
+          </div>
+
+          <div className="form-field">
+            <label className="input-label">{t('bulkEdit.notes', 'Notes')}</label>
+            <textarea
+              className="notes-textarea"
+              value={bulkNotes ?? ''}
+              onChange={(e) => setBulkNotes(e.target.value)}
+              placeholder={t('bulkEdit.notesPlaceholder', 'Leave empty to keep original notes')}
+              rows={3}
+            />
+            <span className="form-help">{t('bulkEdit.notesHelp', 'Enter text to replace notes, or leave empty to keep original')}</span>
           </div>
         </div>
       </Modal>

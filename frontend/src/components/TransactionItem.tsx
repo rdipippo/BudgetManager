@@ -7,12 +7,18 @@ interface TransactionItemProps {
   transaction: Transaction;
   onClick?: () => void;
   onCategoryClick?: () => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onSelectionChange?: (id: number, selected: boolean) => void;
 }
 
 export const TransactionItem: React.FC<TransactionItemProps> = ({
   transaction,
   onClick,
   onCategoryClick,
+  selectable = false,
+  selected = false,
+  onSelectionChange,
 }) => {
   const displayName = transaction.merchant_name || transaction.description || 'Unknown';
 
@@ -23,13 +29,32 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
     day: 'numeric',
   });
 
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    onSelectionChange?.(transaction.id, e.target.checked);
+  };
+
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <div
-      className={`transaction-item ${onClick ? 'transaction-item-clickable' : ''}`}
+      className={`transaction-item ${onClick ? 'transaction-item-clickable' : ''} ${selectable ? 'transaction-item-selectable' : ''} ${selected ? 'transaction-item-selected' : ''}`}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
+      {selectable && (
+        <div className="transaction-item-checkbox" onClick={handleCheckboxClick}>
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={handleCheckboxChange}
+            className="checkbox"
+          />
+        </div>
+      )}
       <div className="transaction-item-name">
         {displayName}
         {Boolean(transaction.pending) && (

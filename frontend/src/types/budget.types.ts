@@ -100,6 +100,8 @@ export interface BudgetSummary {
   totalBudgeted: number;
   totalSpent: number;
   totalRemaining: number;
+  totalIncome: number;
+  totalIncomeReceived: number;
   periodStart: string;
   periodEnd: string;
   budgets: Budget[];

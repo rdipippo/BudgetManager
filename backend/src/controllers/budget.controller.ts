@@ -16,6 +16,7 @@ export const BudgetController = {
       // Calculate spent amounts for each budget
       const budgetsWithSpent: BudgetWithSpent[] = await Promise.all(
         budgets.map(async (budget) => {
+          const budgetAmount = Number(budget.amount) || 0;
           const { startDate, endDate } = BudgetModel.getCurrentPeriodDates(budget.start_day);
           const spent = await TransactionModel.getSpentByCategory(
             req.userId!,
@@ -24,11 +25,12 @@ export const BudgetController = {
             endDate
           );
 
-          const remaining = Math.max(0, budget.amount - spent);
-          const percentage = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
+          const remaining = Math.max(0, budgetAmount - spent);
+          const percentage = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0;
 
           return {
             ...budget,
+            amount: budgetAmount,
             spent,
             remaining,
             percentage: Math.round(percentage * 10) / 10,
@@ -50,10 +52,26 @@ export const BudgetController = {
         return;
       }
 
+      const { year, month } = req.query;
       const budgets = await BudgetModel.findByUserId(req.userId);
 
-      // Get the period dates (assuming standard monthly, day 1)
-      const { startDate, endDate } = BudgetModel.getCurrentPeriodDates(1);
+      // Get the period dates - use specified month/year or current period
+      let startDate: string;
+      let endDate: string;
+
+      if (year && month) {
+        const periodDates = BudgetModel.getPeriodDatesForMonth(
+          parseInt(year as string),
+          parseInt(month as string),
+          1
+        );
+        startDate = periodDates.startDate;
+        endDate = periodDates.endDate;
+      } else {
+        const periodDates = BudgetModel.getCurrentPeriodDates(1);
+        startDate = periodDates.startDate;
+        endDate = periodDates.endDate;
+      }
 
       // Get all spending by category for this period
       const spendingByCategory = await TransactionModel.getSpentByCategoryForPeriod(
@@ -63,21 +81,42 @@ export const BudgetController = {
       );
       const spendingMap = new Map(spendingByCategory.map((s) => [s.category_id, s.total]));
 
+      // Get income received by category for this period
+      const incomeByCategory = await TransactionModel.getIncomeByCategoryForPeriod(
+        req.userId,
+        startDate,
+        endDate
+      );
+      const incomeMap = new Map(incomeByCategory.map((s) => [s.category_id, s.total]));
+
       let totalBudgeted = 0;
       let totalSpent = 0;
+      let totalIncome = 0;
+      let totalIncomeReceived = 0;
 
       const budgetsWithSpent: BudgetWithSpent[] = budgets
-        .filter((b) => !b.is_income) // Exclude income categories from budget summary
         .map((budget) => {
-          const spent = spendingMap.get(budget.category_id) || 0;
-          const remaining = Math.max(0, budget.amount - spent);
-          const percentage = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
+          const budgetAmount = Number(budget.amount) || 0;
+          const isIncome = budget.is_income;
 
-          totalBudgeted += budget.amount;
-          totalSpent += spent;
+          // For income categories, track income received; for expense, track spent
+          const spent = isIncome
+            ? (incomeMap.get(budget.category_id) || 0)
+            : (spendingMap.get(budget.category_id) || 0);
+          const remaining = Math.max(0, budgetAmount - spent);
+          const percentage = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0;
+
+          if (isIncome) {
+            totalIncome += budgetAmount;
+            totalIncomeReceived += spent;
+          } else {
+            totalBudgeted += budgetAmount;
+            totalSpent += spent;
+          }
 
           return {
             ...budget,
+            amount: budgetAmount,
             spent,
             remaining,
             percentage: Math.round(percentage * 10) / 10,
@@ -91,6 +130,8 @@ export const BudgetController = {
         totalBudgeted,
         totalSpent,
         totalRemaining: Math.max(0, totalBudgeted - totalSpent),
+        totalIncome,
+        totalIncomeReceived,
         periodStart: startDate,
         periodEnd: endDate,
         budgets: budgetsWithSpent,
@@ -133,11 +174,13 @@ export const BudgetController = {
         limit: 100,
       });
 
+      const budgetAmount = Number(budget.amount) || 0;
       const budgetWithSpent: BudgetWithSpent = {
         ...budget,
+        amount: budgetAmount,
         spent,
-        remaining: Math.max(0, budget.amount - spent),
-        percentage: budget.amount > 0 ? Math.round((spent / budget.amount) * 1000) / 10 : 0,
+        remaining: Math.max(0, budgetAmount - spent),
+        percentage: budgetAmount > 0 ? Math.round((spent / budgetAmount) * 1000) / 10 : 0,
       };
 
       res.json({

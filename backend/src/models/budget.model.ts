@@ -147,9 +147,35 @@ export const BudgetModel = {
       endDate = new Date(now.getFullYear(), now.getMonth(), startDay - 1);
     }
 
+    // Format dates in local timezone (YYYY-MM-DD) to avoid UTC conversion issues
+    const formatDate = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     return {
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate),
+    };
+  },
+
+  getPeriodDatesForMonth(year: number, month: number, startDay: number = 1): { startDate: string; endDate: string } {
+    // month is 1-indexed (1 = January, 12 = December)
+    const startDate = new Date(year, month - 1, startDay);
+    const endDate = new Date(year, month, startDay - 1);
+
+    const formatDate = (date: Date): string => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+
+    return {
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate),
     };
   },
 };

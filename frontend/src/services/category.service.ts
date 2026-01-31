@@ -15,6 +15,7 @@ export interface UpdateCategoryData {
   icon?: string;
   parentId?: number | null;
   sortOrder?: number;
+  isIncome?: boolean;
 }
 
 export const categoryService = {

@@ -90,7 +90,7 @@ export const CategoryController = {
       }
 
       const { id } = req.params;
-      const { name, color, icon, parentId, sortOrder } = req.body;
+      const { name, color, icon, parentId, sortOrder, isIncome } = req.body;
 
       // Check category exists and belongs to user
       const category = await CategoryModel.findByIdAndUser(parseInt(id), req.userId);
@@ -132,6 +132,7 @@ export const CategoryController = {
         icon,
         parent_id: parentId,
         sort_order: sortOrder,
+        is_income: isIncome,
       });
 
       if (!updated) {

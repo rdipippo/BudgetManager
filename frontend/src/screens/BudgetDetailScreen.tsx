@@ -122,7 +122,7 @@ export const BudgetDetailScreen: React.FC = () => {
         </div>
 
         <div className="budget-detail-period">
-          {new Date(periodStart).toLocaleDateString()} - {new Date(periodEnd).toLocaleDateString()}
+          {new Date(periodStart + 'T00:00:00').toLocaleDateString()} - {new Date(periodEnd + 'T00:00:00').toLocaleDateString()}
         </div>
       </div>
 

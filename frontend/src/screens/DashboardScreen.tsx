@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { budgetService, plaidService } from '../services';
-import { BudgetSummary, PlaidItem } from '../types/budget.types';
-import { BudgetCard, Spinner, EmptyState, SideMenu, Alert } from '../components';
+import { budgetService, plaidService, transactionService } from '../services';
+import { BudgetSummary, PlaidItem, Transaction } from '../types/budget.types';
+import { BudgetCard, Spinner, EmptyState, SideMenu, Alert, TransactionItem } from '../components';
 
 export const DashboardScreen: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [summary, setSummary] = useState<BudgetSummary | null>(null);
   const [accounts, setAccounts] = useState<PlaidItem[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,12 +22,14 @@ export const DashboardScreen: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [summaryData, accountsData] = await Promise.all([
+      const [summaryData, accountsData, transactionsData] = await Promise.all([
         budgetService.getSummary(),
         plaidService.getItems(),
+        transactionService.getAll({ limit: 10 }),
       ]);
       setSummary(summaryData);
       setAccounts(accountsData);
+      setRecentTransactions(transactionsData.transactions);
     } catch (err) {
       setError(t('dashboard.loadError', 'Failed to load budget summary'));
     } finally {
@@ -39,7 +42,7 @@ export const DashboardScreen: React.FC = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return amount.toLocaleString('en-US', {
+    return Number(amount).toLocaleString('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
@@ -112,10 +115,14 @@ export const DashboardScreen: React.FC = () => {
               <span className="overview-label">{t('dashboard.totalSpent', 'Spent')}</span>
               <span className="overview-amount overview-amount-spent">{formatCurrency(summary.totalSpent)}</span>
             </div>
+            <div className="overview-card">
+              <span className="overview-label">{t('dashboard.totalIncome', 'Income')}</span>
+              <span className="overview-amount overview-amount-income">{formatCurrency(summary.totalIncome)}</span>
+            </div>
           </div>
 
           <div className="dashboard-period">
-            {t('dashboard.period', 'Period')}: {new Date(summary.periodStart).toLocaleDateString()} - {new Date(summary.periodEnd).toLocaleDateString()}
+            {t('dashboard.period', 'Period')}: {new Date(summary.periodStart + 'T00:00:00').toLocaleDateString()} - {new Date(summary.periodEnd + 'T00:00:00').toLocaleDateString()}
           </div>
 
           <div className="budget-list">
@@ -126,6 +133,37 @@ export const DashboardScreen: React.FC = () => {
                 onClick={() => handleBudgetClick(budget.id)}
               />
             ))}
+          </div>
+
+          {/* Recent Transactions Widget */}
+          <div className="dashboard-widget">
+            <div className="dashboard-widget-header">
+              <h2 className="dashboard-widget-title">{t('dashboard.recentTransactions', 'Recent Transactions')}</h2>
+              <button className="dashboard-widget-link" onClick={() => navigate('/transactions')}>
+                {t('dashboard.viewAll', 'View All')}
+              </button>
+            </div>
+            {recentTransactions.length === 0 ? (
+              <div className="dashboard-widget-empty">
+                {t('dashboard.noTransactions', 'No transactions yet')}
+              </div>
+            ) : (
+              <div className="transaction-list">
+                <div className="transaction-list-header">
+                  <div>{t('transactions.name', 'Name')}</div>
+                  <div>{t('transactions.date', 'Date')}</div>
+                  <div>{t('transactions.category', 'Category')}</div>
+                  <div>{t('transactions.amount', 'Amount')}</div>
+                </div>
+                {recentTransactions.map((transaction) => (
+                  <TransactionItem
+                    key={transaction.id}
+                    transaction={transaction}
+                    onClick={() => navigate('/transactions')}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           <div

@@ -20,6 +20,7 @@ export const CategoriesScreen: React.FC = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formName, setFormName] = useState('');
   const [formColor, setFormColor] = useState(COLORS[0]);
+  const [formIsIncome, setFormIsIncome] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -43,6 +44,7 @@ export const CategoriesScreen: React.FC = () => {
     setEditingCategory(null);
     setFormName('');
     setFormColor(COLORS[Math.floor(Math.random() * COLORS.length)]);
+    setFormIsIncome(false);
     setModalOpen(true);
   };
 
@@ -50,6 +52,7 @@ export const CategoriesScreen: React.FC = () => {
     setEditingCategory(category);
     setFormName(category.name);
     setFormColor(category.color);
+    setFormIsIncome(category.is_income);
     setModalOpen(true);
   };
 
@@ -59,9 +62,9 @@ export const CategoriesScreen: React.FC = () => {
     try {
       setSaving(true);
       if (editingCategory) {
-        await categoryService.update(editingCategory.id, { name: formName, color: formColor });
+        await categoryService.update(editingCategory.id, { name: formName, color: formColor, isIncome: formIsIncome });
       } else {
-        await categoryService.create({ name: formName, color: formColor });
+        await categoryService.create({ name: formName, color: formColor, isIncome: formIsIncome });
       }
       setModalOpen(false);
       loadCategories();
@@ -209,6 +212,17 @@ export const CategoriesScreen: React.FC = () => {
                 />
               ))}
             </div>
+          </div>
+          <div className="form-group">
+            <label className="checkbox-wrapper">
+              <input
+                type="checkbox"
+                className="checkbox"
+                checked={formIsIncome}
+                onChange={(e) => setFormIsIncome(e.target.checked)}
+              />
+              <span className="checkbox-label">{t('categories.isIncome', 'This is an income category')}</span>
+            </label>
           </div>
         </div>
       </Modal>

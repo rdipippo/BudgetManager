@@ -50,7 +50,7 @@ export const TransactionSyncService = {
               user_id: userId,
               plaid_account_id: dbAccountId,
               plaid_transaction_id: plaidTx.transaction_id,
-              amount: plaidTx.amount, // Plaid uses positive for outflows
+              amount: -plaidTx.amount, // Plaid uses positive for outflows, negate to match app convention
               date: plaidTx.date,
               merchant_name: plaidTx.merchant_name || plaidTx.name,
               description: plaidTx.name,
@@ -74,7 +74,7 @@ export const TransactionSyncService = {
               user_id: userId,
               plaid_account_id: dbAccountId,
               plaid_transaction_id: plaidTx.transaction_id,
-              amount: plaidTx.amount,
+              amount: -plaidTx.amount,
               date: plaidTx.date,
               merchant_name: plaidTx.merchant_name || plaidTx.name,
               description: plaidTx.name,

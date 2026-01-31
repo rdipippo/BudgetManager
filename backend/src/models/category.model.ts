@@ -31,6 +31,7 @@ export interface UpdateCategoryData {
   icon?: string;
   parent_id?: number | null;
   sort_order?: number;
+  is_income?: boolean;
 }
 
 const DEFAULT_CATEGORIES = [
@@ -121,6 +122,10 @@ export const CategoryModel = {
     if (data.sort_order !== undefined) {
       fields.push('sort_order = ?');
       values.push(data.sort_order);
+    }
+    if (data.is_income !== undefined) {
+      fields.push('is_income = ?');
+      values.push(data.is_income ? 1 : 0);
     }
 
     if (fields.length === 0) return false;

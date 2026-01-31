@@ -292,6 +292,41 @@ export const TransactionModel = {
     return result.affectedRows > 0;
   },
 
+  async updateMultiple(
+    userId: number,
+    transactionIds: number[],
+    updates: { category_id?: number | null; notes?: string | null; date?: string }
+  ): Promise<number> {
+    if (transactionIds.length === 0) return 0;
+
+    const fields: string[] = [];
+    const values: (string | number | null)[] = [];
+
+    if (updates.category_id !== undefined) {
+      fields.push('category_id = ?');
+      values.push(updates.category_id);
+    }
+    if (updates.notes !== undefined) {
+      fields.push('notes = ?');
+      values.push(updates.notes);
+    }
+    if (updates.date !== undefined) {
+      fields.push('date = ?');
+      values.push(updates.date);
+    }
+
+    if (fields.length === 0) return 0;
+
+    const placeholders = transactionIds.map(() => '?').join(', ');
+    values.push(userId, ...transactionIds);
+
+    const [result] = await pool.execute<ResultSetHeader>(
+      `UPDATE transactions SET ${fields.join(', ')} WHERE user_id = ? AND id IN (${placeholders})`,
+      values
+    );
+    return result.affectedRows;
+  },
+
   async getSpentByCategory(
     userId: number,
     categoryId: number,
@@ -316,6 +351,24 @@ export const TransactionModel = {
       `SELECT category_id, COALESCE(SUM(ABS(amount)), 0) as total
        FROM transactions
        WHERE user_id = ? AND date >= ? AND date <= ? AND amount < 0 AND category_id IS NOT NULL
+       GROUP BY category_id`,
+      [userId, startDate, endDate]
+    );
+    return rows.map((row: RowDataPacket) => ({
+      category_id: row.category_id,
+      total: parseFloat(row.total) || 0,
+    }));
+  },
+
+  async getIncomeByCategoryForPeriod(
+    userId: number,
+    startDate: string,
+    endDate: string
+  ): Promise<{ category_id: number; total: number }[]> {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT category_id, COALESCE(SUM(amount), 0) as total
+       FROM transactions
+       WHERE user_id = ? AND date >= ? AND date <= ? AND amount > 0 AND category_id IS NOT NULL
        GROUP BY category_id`,
       [userId, startDate, endDate]
     );

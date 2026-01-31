@@ -19,6 +19,12 @@ export interface UpdateTransactionData {
   notes?: string;
 }
 
+export interface BulkUpdateData {
+  categoryId?: number | null;
+  notes?: string | null;
+  date?: string;
+}
+
 interface TransactionsResponse {
   transactions: Transaction[];
   pagination: Pagination;
@@ -65,6 +71,14 @@ export const transactionService = {
 
   async delete(id: number): Promise<void> {
     await api.delete(`/transactions/${id}`);
+  },
+
+  async bulkUpdate(transactionIds: number[], updates: BulkUpdateData): Promise<{ affectedRows: number }> {
+    const response = await api.put<{ message: string; affectedRows: number }>('/transactions/bulk', {
+      transactionIds,
+      ...updates,
+    });
+    return { affectedRows: response.data.affectedRows };
   },
 };
 

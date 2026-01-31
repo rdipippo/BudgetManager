@@ -69,6 +69,27 @@ const updateCategoryValidation = [
   handleValidationErrors,
 ];
 
+const bulkUpdateValidation = [
+  body('transactionIds')
+    .isArray({ min: 1, max: 100 })
+    .withMessage('transactionIds must be an array with 1-100 items'),
+  body('transactionIds.*')
+    .isInt({ min: 1 })
+    .withMessage('Each transaction ID must be a positive integer'),
+  body('categoryId')
+    .optional({ nullable: true })
+    .custom((value) => value === null || (Number.isInteger(value) && value > 0))
+    .withMessage('Category ID must be a positive integer or null'),
+  body('notes')
+    .optional({ nullable: true })
+    .trim(),
+  body('date')
+    .optional()
+    .isISO8601()
+    .withMessage('Date must be a valid ISO 8601 date'),
+  handleValidationErrors,
+];
+
 const idParamValidation = [
   param('id')
     .isInt({ min: 1 })
@@ -108,6 +129,7 @@ const listQueryValidation = [
 router.use(authMiddleware);
 
 router.get('/', listQueryValidation, TransactionController.getAll);
+router.put('/bulk', bulkUpdateValidation, TransactionController.bulkUpdate);
 router.get('/:id', idParamValidation, TransactionController.getById);
 router.post('/', createTransactionValidation, TransactionController.create);
 router.put('/:id', idParamValidation, updateTransactionValidation, TransactionController.update);
