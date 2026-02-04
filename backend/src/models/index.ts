@@ -28,3 +28,6 @@ export type { LearnedPattern } from './learned-pattern.model';
 
 export { BudgetModel } from './budget.model';
 export type { Budget, BudgetWithCategory, BudgetWithSpent, CreateBudgetData, UpdateBudgetData } from './budget.model';
+
+export { UserPreferencesModel } from './user-preferences.model';
+export type { UserPreferences, TransactionColumnConfig } from './user-preferences.model';

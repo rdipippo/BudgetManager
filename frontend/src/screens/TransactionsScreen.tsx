@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { transactionService, categoryService, plaidService } from '../services';
+import { transactionService, categoryService, plaidService, settingsService } from '../services';
 import { Transaction, Category, Pagination } from '../types/budget.types';
-import { TransactionItem, Spinner, EmptyState, SideMenu, Alert, Input, Button, Modal } from '../components';
+import { TransactionItem, Spinner, EmptyState, SideMenu, Alert, Input, Button, Modal, CategoryList } from '../components';
 
 interface AccountOption {
   id: number;
@@ -13,7 +12,6 @@ interface AccountOption {
 }
 
 export const TransactionsScreen: React.FC = () => {
-  const navigate = useNavigate();
   const { t } = useTranslation();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -52,6 +50,13 @@ export const TransactionsScreen: React.FC = () => {
   const [bulkDate, setBulkDate] = useState<string | undefined>(undefined);
   const [bulkSaving, setBulkSaving] = useState(false);
 
+  // Sort and column visibility state
+  const [sortField, setSortField] = useState<string>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(['name', 'date', 'category', 'amount']);
+  const [columnSettingsOpen, setColumnSettingsOpen] = useState(false);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
   const hasActiveFilters = search || selectedCategoryId !== undefined || selectedAccountId || startDate || endDate;
 
   const loadTransactions = useCallback(async (append = false) => {
@@ -72,6 +77,8 @@ export const TransactionsScreen: React.FC = () => {
         endDate: endDate || undefined,
         limit: 50,
         offset,
+        sortField,
+        sortDirection,
       });
 
       if (append) {
@@ -86,18 +93,24 @@ export const TransactionsScreen: React.FC = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [search, selectedCategoryId, selectedAccountId, startDate, endDate, pagination, t]);
+  }, [search, selectedCategoryId, selectedAccountId, startDate, endDate, pagination, t, sortField, sortDirection]);
 
   const loadInitialData = async () => {
     try {
-      const [categoriesData, accountsData] = await Promise.all([
+      const [categoriesData, accountsData, prefsData] = await Promise.all([
         categoryService.getAll(),
         plaidService.getAllAccounts(),
+        settingsService.getTransactionPreferences(),
       ]);
       setCategories(categoriesData);
       setAccounts(accountsData.filter((a) => !a.isHidden));
+      setVisibleColumns(prefsData.visibleColumns);
+      setSortField(prefsData.sortField);
+      setSortDirection(prefsData.sortDirection);
+      setPrefsLoaded(true);
     } catch (err) {
       console.error('Failed to load initial data:', err);
+      setPrefsLoaded(true);
     }
   };
 
@@ -114,11 +127,12 @@ export const TransactionsScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!prefsLoaded) return;
     const timeoutId = setTimeout(() => {
       loadTransactions();
     }, 300);
     return () => clearTimeout(timeoutId);
-  }, [search, selectedCategoryId, selectedAccountId, startDate, endDate]);
+  }, [search, selectedCategoryId, selectedAccountId, startDate, endDate, sortField, sortDirection, prefsLoaded]);
 
   // Clear selections when exiting selection mode or when transactions change
   useEffect(() => {
@@ -323,11 +337,63 @@ export const TransactionsScreen: React.FC = () => {
   const isAllSelected = transactions.length > 0 && selectedIds.size === transactions.length;
   const isSomeSelected = selectedIds.size > 0 && selectedIds.size < transactions.length;
 
+  // Sort and column visibility handlers
+  const handleSort = async (field: string) => {
+    const newDirection = sortField === field && sortDirection === 'desc' ? 'asc' : 'desc';
+    setSortField(field);
+    setSortDirection(newDirection);
+    try {
+      await settingsService.updateTransactionPreferences({ sortField: field, sortDirection: newDirection });
+    } catch (err) {
+      console.error('Failed to save sort preferences:', err);
+    }
+  };
+
+  const handleColumnToggle = (column: string) => {
+    setVisibleColumns((prev) => {
+      if (prev.includes(column)) {
+        if (prev.length <= 1) return prev;
+        return prev.filter((c) => c !== column);
+      }
+      return [...prev, column];
+    });
+  };
+
+  const saveColumnPreferences = async () => {
+    try {
+      await settingsService.updateTransactionPreferences({ visibleColumns });
+      setColumnSettingsOpen(false);
+    } catch (err) {
+      setError(t('transactions.prefsSaveError', 'Failed to save preferences'));
+    }
+  };
+
+  const allColumns = [
+    { id: 'name', label: t('transactions.name', 'Name'), sortable: true },
+    { id: 'date', label: t('transactions.date', 'Date'), sortable: true },
+    { id: 'category', label: t('transactions.category', 'Category'), sortable: true },
+    { id: 'amount', label: t('transactions.amount', 'Amount'), sortable: true },
+    { id: 'account', label: t('transactions.account', 'Account'), sortable: false },
+    { id: 'notes', label: t('transactions.notes', 'Notes'), sortable: false },
+  ];
+
+  const displayedColumns = allColumns.filter((col) => visibleColumns.includes(col.id));
+
   return (
     <div className="screen screen-with-nav">
       <div className="transactions-header">
         <h1>{t('transactions.title', 'Transactions')}</h1>
         <div className="transactions-header-actions">
+          <button
+            className="icon-button"
+            onClick={() => setColumnSettingsOpen(true)}
+            title={t('transactions.columnSettings', 'Column Settings')}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
           <Button
             variant={selectionMode ? 'primary' : 'secondary'}
             onClick={toggleSelectionMode}
@@ -402,7 +468,7 @@ export const TransactionsScreen: React.FC = () => {
             />
           </div>
 
-            <label style={{paddingTop: "10px"}}>{t('transactions.to', 'To')}</label>
+            <span className="filter-label">{t('transactions.to', 'To')}</span>
 
           <div className="date-filter">
             <input
@@ -443,8 +509,8 @@ export const TransactionsScreen: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className={`transaction-list ${selectionMode ? 'transaction-list-selectable' : ''}`}>
-            <div className={`transaction-list-header ${selectionMode ? 'transaction-list-header-selectable' : ''}`}>
+          <div className={`transaction-list ${selectionMode ? 'transaction-list-selectable' : ''}`} style={{ '--col-count': displayedColumns.length } as React.CSSProperties}>
+            <div className={`transaction-list-header transaction-list-header-dynamic ${selectionMode ? 'transaction-list-header-selectable' : ''}`} style={{ gridTemplateColumns: selectionMode ? `40px repeat(${displayedColumns.length}, 1fr)` : `repeat(${displayedColumns.length}, 1fr)` }}>
               {selectionMode && (
                 <div className="transaction-list-header-checkbox">
                   <input
@@ -458,10 +524,18 @@ export const TransactionsScreen: React.FC = () => {
                   />
                 </div>
               )}
-              <div>{t('transactions.name', 'Name')}</div>
-              <div>{t('transactions.date', 'Date')}</div>
-              <div>{t('transactions.category', 'Category')}</div>
-              <div>{t('transactions.amount', 'Amount')}</div>
+              {displayedColumns.map((col) => (
+                <div
+                  key={col.id}
+                  className={`transaction-list-header-cell ${col.sortable ? 'sortable' : ''} ${sortField === col.id ? 'sorted' : ''}`}
+                  onClick={() => col.sortable && handleSort(col.id)}
+                >
+                  {col.label}
+                  {col.sortable && sortField === col.id && (
+                    <span className="sort-indicator">{sortDirection === 'asc' ? ' ↑' : ' ↓'}</span>
+                  )}
+                </div>
+              ))}
             </div>
             {transactions.map((transaction) => (
               <TransactionItem
@@ -472,6 +546,7 @@ export const TransactionsScreen: React.FC = () => {
                 selectable={selectionMode}
                 selected={selectedIds.has(transaction.id)}
                 onSelectionChange={handleSelectionChange}
+                visibleColumns={visibleColumns}
               />
             ))}
           </div>
@@ -495,25 +570,13 @@ export const TransactionsScreen: React.FC = () => {
         onClose={() => setCategoryModalOpen(false)}
         title={t('transactions.selectCategory', 'Select Category')}
       >
-        <div className="category-picker">
-          <button
-            className="category-picker-item"
-            onClick={() => handleCategorySelect(null)}
-          >
-            <span className="category-picker-dot" style={{ backgroundColor: '#6B7280' }} />
-            {t('transactions.uncategorized', 'Uncategorized')}
-          </button>
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              className={`category-picker-item ${selectedTransaction?.category_id === category.id ? 'active' : ''}`}
-              onClick={() => handleCategorySelect(category.id)}
-            >
-              <span className="category-picker-dot" style={{ backgroundColor: category.color }} />
-              {category.name}
-            </button>
-          ))}
-        </div>
+        <CategoryList
+          categories={categories}
+          mode="select"
+          selectedCategoryId={selectedTransaction?.category_id}
+          showUncategorized
+          onSelect={handleCategorySelect}
+        />
       </Modal>
 
       <Modal
@@ -681,6 +744,38 @@ export const TransactionsScreen: React.FC = () => {
             />
             <span className="form-help">{t('bulkEdit.notesHelp', 'Enter text to replace notes, or leave empty to keep original')}</span>
           </div>
+        </div>
+      </Modal>
+
+      {/* Column Settings Modal */}
+      <Modal
+        isOpen={columnSettingsOpen}
+        onClose={() => setColumnSettingsOpen(false)}
+        title={t('transactions.columnSettings', 'Column Settings')}
+        footer={
+          <div className="modal-actions">
+            <Button variant="secondary" onClick={() => setColumnSettingsOpen(false)}>
+              {t('common.cancel', 'Cancel')}
+            </Button>
+            <Button variant="primary" onClick={saveColumnPreferences}>
+              {t('common.save', 'Save')}
+            </Button>
+          </div>
+        }
+      >
+        <div className="column-settings-list">
+          {allColumns.map((col) => (
+            <label key={col.id} className="column-settings-item">
+              <input
+                type="checkbox"
+                className="checkbox"
+                checked={visibleColumns.includes(col.id)}
+                onChange={() => handleColumnToggle(col.id)}
+                disabled={visibleColumns.length === 1 && visibleColumns.includes(col.id)}
+              />
+              <span>{col.label}</span>
+            </label>
+          ))}
         </div>
       </Modal>
 

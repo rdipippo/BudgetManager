@@ -231,6 +231,9 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   user-select: none;
+  position: relative;
+  top: -4px;
+  left: 10px;
 }
 
 /* Card Component */

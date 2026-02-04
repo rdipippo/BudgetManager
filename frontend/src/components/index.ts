@@ -14,3 +14,8 @@ export { BottomNav } from './BottomNav';
 export { SideMenu } from './SideMenu';
 export { EmptyState } from './EmptyState';
 export { Modal } from './Modal';
+export { BudgetSummaryWidget } from './BudgetSummaryWidget';
+export { AccountsWidget } from './AccountsWidget';
+export { CategoryList } from './CategoryList';
+export { PieChart } from './PieChart';
+export { BarChart } from './BarChart';

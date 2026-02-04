@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { categoryService } from '../services';
 import { Category } from '../types/budget.types';
-import { Spinner, Alert, Button, Input, Modal, SideMenu } from '../components';
+import { Spinner, Alert, Button, Input, Modal, SideMenu, CategoryList } from '../components';
 
 const COLORS = [
   '#EF4444', '#F97316', '#F59E0B', '#84CC16', '#10B981',
@@ -88,8 +88,6 @@ export const CategoriesScreen: React.FC = () => {
     }
   };
 
-  const expenseCategories = categories.filter((c) => !c.is_income);
-  const incomeCategories = categories.filter((c) => c.is_income);
 
   return (
     <div className="screen screen-with-nav">
@@ -115,59 +113,12 @@ export const CategoriesScreen: React.FC = () => {
           <Spinner size="lg" />
         </div>
       ) : (
-        <div className="categories-list">
-          <div className="categories-section">
-            <h2 className="section-title">{t('categories.expense', 'Expense Categories')}</h2>
-            {expenseCategories.map((category) => (
-              <div
-                key={category.id}
-                className="category-item"
-                onClick={() => openEditModal(category)}
-              >
-                <div className="category-item-left">
-                  <span className="category-item-dot" style={{ backgroundColor: category.color }} />
-                  <span className="category-item-name">{category.name}</span>
-                </div>
-                <button
-                  className="category-item-delete"
-                  onClick={(e) => { e.stopPropagation(); handleDelete(category); }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {incomeCategories.length > 0 && (
-            <div className="categories-section">
-              <h2 className="section-title">{t('categories.income', 'Income Categories')}</h2>
-              {incomeCategories.map((category) => (
-                <div
-                  key={category.id}
-                  className="category-item"
-                  onClick={() => openEditModal(category)}
-                >
-                  <div className="category-item-left">
-                    <span className="category-item-dot" style={{ backgroundColor: category.color }} />
-                    <span className="category-item-name">{category.name}</span>
-                  </div>
-                  <button
-                    className="category-item-delete"
-                    onClick={(e) => { e.stopPropagation(); handleDelete(category); }}
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <CategoryList
+          categories={categories}
+          mode="manage"
+          onEdit={openEditModal}
+          onDelete={handleDelete}
+        />
       )}
 
       <Modal

@@ -1,5 +1,6 @@
 import pool from '../config/database';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { SafeQueryBuilder, buildSetClause } from '../utils';
 
 export interface Transaction {
   id: number;
@@ -34,7 +35,7 @@ export interface CreateTransactionData {
   date: Date | string;
   merchant_name?: string;
   description?: string;
-  plaid_category?: string;
+  plaid_category?: string | null;
   pending?: boolean;
   is_manual?: boolean;
   notes?: string;
@@ -50,6 +51,8 @@ export interface TransactionFilters {
   uncategorized?: boolean;
   limit?: number;
   offset?: number;
+  sortField?: string;
+  sortDirection?: 'asc' | 'desc';
 }
 
 export const TransactionModel = {
@@ -81,93 +84,84 @@ export const TransactionModel = {
     userId: number,
     filters: TransactionFilters = {}
   ): Promise<TransactionWithCategory[]> {
-    let query = `
+    const sortFieldMap: Record<string, string> = {
+      name: 't.merchant_name',
+      date: 't.date',
+      category: 'c.name',
+      amount: 't.amount',
+    };
+
+    const qb = new SafeQueryBuilder(`
       SELECT t.*, c.name as category_name, c.color as category_color, c.icon as category_icon
       FROM transactions t
       LEFT JOIN categories c ON t.category_id = c.id
       WHERE t.user_id = ?
-    `;
-    const params: (string | number | boolean)[] = [userId];
+    `).addParam(userId);
 
     if (filters.startDate) {
-      query += ' AND t.date >= ?';
-      params.push(filters.startDate);
+      qb.where('t.date >= ?', filters.startDate);
     }
     if (filters.endDate) {
-      query += ' AND t.date <= ?';
-      params.push(filters.endDate);
+      qb.where('t.date <= ?', filters.endDate);
     }
     if (filters.categoryId !== undefined) {
       if (filters.categoryId === null) {
-        query += ' AND t.category_id IS NULL';
+        qb.whereRaw('t.category_id IS NULL');
       } else {
-        query += ' AND t.category_id = ?';
-        params.push(filters.categoryId);
+        qb.where('t.category_id = ?', filters.categoryId);
       }
     }
     if (filters.uncategorized) {
-      query += ' AND t.category_id IS NULL';
+      qb.whereRaw('t.category_id IS NULL');
     }
     if (filters.accountId) {
-      query += ' AND t.plaid_account_id = ?';
-      params.push(filters.accountId);
+      qb.where('t.plaid_account_id = ?', filters.accountId);
     }
     if (filters.search) {
-      query += ' AND (t.merchant_name LIKE ? OR t.description LIKE ?)';
-      const searchPattern = `%${filters.search}%`;
-      params.push(searchPattern, searchPattern);
+      qb.whereLikeAny(['t.merchant_name', 't.description'], filters.search);
     }
     if (filters.pending !== undefined) {
-      query += ' AND t.pending = ?';
-      params.push(filters.pending);
+      qb.where('t.pending = ?', filters.pending);
     }
 
-    query += ' ORDER BY t.date DESC, t.id DESC';
+    qb.orderBy(filters.sortField, sortFieldMap, filters.sortDirection, 't.date')
+      .thenBy('t.id', 'desc')
+      .limit(filters.limit)
+      .offset(filters.offset);
 
-    if (filters.limit) {
-      query += ` LIMIT ${Math.floor(filters.limit)}`;
-      if (filters.offset) {
-        query += ` OFFSET ${Math.floor(filters.offset)}`;
-      }
-    }
-
+    const { query, params } = qb.build();
     const [rows] = await pool.execute<RowDataPacket[]>(query, params);
     return rows as TransactionWithCategory[];
   },
 
   async countByUserId(userId: number, filters: TransactionFilters = {}): Promise<number> {
-    let query = 'SELECT COUNT(*) as count FROM transactions WHERE user_id = ?';
-    const params: (string | number | boolean)[] = [userId];
+    const qb = new SafeQueryBuilder('SELECT COUNT(*) as count FROM transactions WHERE user_id = ?')
+      .addParam(userId);
 
     if (filters.startDate) {
-      query += ' AND date >= ?';
-      params.push(filters.startDate);
+      qb.where('date >= ?', filters.startDate);
     }
     if (filters.endDate) {
-      query += ' AND date <= ?';
-      params.push(filters.endDate);
+      qb.where('date <= ?', filters.endDate);
     }
     if (filters.categoryId !== undefined) {
       if (filters.categoryId === null) {
-        query += ' AND category_id IS NULL';
+        qb.whereRaw('category_id IS NULL');
       } else {
-        query += ' AND category_id = ?';
-        params.push(filters.categoryId);
+        qb.where('category_id = ?', filters.categoryId);
       }
     }
     if (filters.uncategorized) {
-      query += ' AND category_id IS NULL';
+      qb.whereRaw('category_id IS NULL');
     }
     if (filters.accountId) {
-      query += ' AND plaid_account_id = ?';
-      params.push(filters.accountId);
+      qb.where('plaid_account_id = ?', filters.accountId);
     }
     if (filters.search) {
-      query += ' AND (merchant_name LIKE ? OR description LIKE ?)';
-      const searchPattern = `%${filters.search}%`;
-      params.push(searchPattern, searchPattern);
+      qb.whereLikeAny(['merchant_name', 'description'], filters.search);
     }
 
+    const { query, params } = qb.build();
     const [rows] = await pool.execute<RowDataPacket[]>(query, params);
     return (rows[0] as { count: number }).count;
   },
@@ -299,31 +293,21 @@ export const TransactionModel = {
   ): Promise<number> {
     if (transactionIds.length === 0) return 0;
 
-    const fields: string[] = [];
-    const values: (string | number | null)[] = [];
+    const setClause = buildSetClause(updates, {
+      category_id: 'category_id',
+      notes: 'notes',
+      date: 'date',
+    });
 
-    if (updates.category_id !== undefined) {
-      fields.push('category_id = ?');
-      values.push(updates.category_id);
-    }
-    if (updates.notes !== undefined) {
-      fields.push('notes = ?');
-      values.push(updates.notes);
-    }
-    if (updates.date !== undefined) {
-      fields.push('date = ?');
-      values.push(updates.date);
-    }
+    if (!setClause) return 0;
 
-    if (fields.length === 0) return 0;
+    const qb = new SafeQueryBuilder(`UPDATE transactions SET ${setClause.setClause}`)
+      .addParams(setClause.values)
+      .where('user_id = ?', userId)
+      .whereIn('id', transactionIds);
 
-    const placeholders = transactionIds.map(() => '?').join(', ');
-    values.push(userId, ...transactionIds);
-
-    const [result] = await pool.execute<ResultSetHeader>(
-      `UPDATE transactions SET ${fields.join(', ')} WHERE user_id = ? AND id IN (${placeholders})`,
-      values
-    );
+    const { query, params } = qb.build();
+    const [result] = await pool.execute<ResultSetHeader>(query, params);
     return result.affectedRows;
   },
 

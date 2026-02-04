@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { budgetService, plaidService, transactionService } from '../services';
 import { BudgetSummary, PlaidItem, Transaction } from '../types/budget.types';
-import { BudgetCard, Spinner, EmptyState, SideMenu, Alert, TransactionItem } from '../components';
+import { BudgetCard, BudgetSummaryWidget, Spinner, EmptyState, SideMenu, Alert, TransactionItem, AccountsWidget } from '../components';
 
 export const DashboardScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -41,15 +41,6 @@ export const DashboardScreen: React.FC = () => {
     navigate(`/budgets/${budgetId}`);
   };
 
-  const formatCurrency = (amount: number) => {
-    return Number(amount).toLocaleString('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
-  };
-
   return (
     <div className="screen screen-with-nav">
       <div className="dashboard-header">
@@ -73,53 +64,16 @@ export const DashboardScreen: React.FC = () => {
             onAction={() => navigate('/budgets')}
           />
 
-          <div
-            className="accounts-card"
-            onClick={() => navigate('/accounts')}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === 'Enter' && navigate('/accounts')}
-          >
-            <div className="accounts-card-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
-                <line x1="1" y1="10" x2="23" y2="10" />
-              </svg>
-            </div>
-            <div className="accounts-card-content">
-              <span className="accounts-card-title">{t('dashboard.linkedAccounts', 'Linked Accounts')}</span>
-              <span className="accounts-card-count">
-                {accounts.length === 0
-                  ? t('dashboard.noAccountsLinked', 'No accounts linked')
-                  : t('dashboard.accountCount', '{{count}} institution(s), {{accountCount}} account(s)', {
-                      count: accounts.length,
-                      accountCount: accounts.reduce((sum, item) => sum + item.accounts.length, 0),
-                    })}
-              </span>
-            </div>
-            <div className="accounts-card-arrow">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </div>
-          </div>
+          <AccountsWidget accounts={accounts} />
         </div>
       ) : (
         <>
-          <div className="dashboard-overview">
-            <div className="overview-card">
-              <span className="overview-label">{t('dashboard.totalBudgeted', 'Budgeted')}</span>
-              <span className="overview-amount">{formatCurrency(summary.totalBudgeted)}</span>
-            </div>
-            <div className="overview-card">
-              <span className="overview-label">{t('dashboard.totalSpent', 'Spent')}</span>
-              <span className="overview-amount overview-amount-spent">{formatCurrency(summary.totalSpent)}</span>
-            </div>
-            <div className="overview-card">
-              <span className="overview-label">{t('dashboard.totalIncome', 'Income')}</span>
-              <span className="overview-amount overview-amount-income">{formatCurrency(summary.totalIncome)}</span>
-            </div>
-          </div>
+          <BudgetSummaryWidget
+            totalIncome={summary.totalIncome}
+            totalBudgeted={summary.totalBudgeted}
+            totalSpent={summary.totalSpent}
+            totalRemaining={summary.totalRemaining}
+          />
 
           <div className="dashboard-period">
             {t('dashboard.period', 'Period')}: {new Date(summary.periodStart + 'T00:00:00').toLocaleDateString()} - {new Date(summary.periodEnd + 'T00:00:00').toLocaleDateString()}
@@ -166,41 +120,7 @@ export const DashboardScreen: React.FC = () => {
             )}
           </div>
 
-          <div
-            className="accounts-card"
-            onClick={() => navigate('/accounts')}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === 'Enter' && navigate('/accounts')}
-          >
-            <div className="accounts-card-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
-                <line x1="1" y1="10" x2="23" y2="10" />
-              </svg>
-            </div>
-            <div className="accounts-card-content">
-              <span className="accounts-card-title">{t('dashboard.linkedAccounts', 'Linked Accounts')}</span>
-              <span className="accounts-card-count">
-                {accounts.length === 0
-                  ? t('dashboard.noAccountsLinked', 'No accounts linked')
-                  : t('dashboard.accountCount', '{{count}} institution(s), {{accountCount}} account(s)', {
-                      count: accounts.length,
-                      accountCount: accounts.reduce((sum, item) => sum + item.accounts.length, 0),
-                    })}
-              </span>
-              {accounts.some((item) => item.status !== 'active') && (
-                <span className="accounts-card-warning">
-                  {t('dashboard.accountsNeedAttention', 'Some accounts need attention')}
-                </span>
-              )}
-            </div>
-            <div className="accounts-card-arrow">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </div>
-          </div>
+          <AccountsWidget accounts={accounts} />
         </>
       )}
 

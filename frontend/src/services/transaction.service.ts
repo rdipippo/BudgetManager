@@ -44,6 +44,8 @@ export const transactionService = {
     if (filters.uncategorized) params.append('uncategorized', 'true');
     if (filters.limit) params.append('limit', String(filters.limit));
     if (filters.offset) params.append('offset', String(filters.offset));
+    if (filters.sortField) params.append('sortField', filters.sortField);
+    if (filters.sortDirection) params.append('sortDirection', filters.sortDirection);
 
     const response = await api.get<TransactionsResponse>(`/transactions?${params.toString()}`);
     return response.data;

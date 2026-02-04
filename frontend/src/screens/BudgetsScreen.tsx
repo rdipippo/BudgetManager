@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { budgetService, categoryService } from '../services';
-import { Budget, Category, BudgetSummary } from '../types/budget.types';
-import { BudgetCard, Spinner, EmptyState, SideMenu, Alert, Button, Modal, Input, AmountDisplay } from '../components';
+import { Category, BudgetSummary } from '../types/budget.types';
+import { BudgetCard, BudgetSummaryWidget, Spinner, EmptyState, SideMenu, Alert, Button, Modal, Input } from '../components';
 
 export const BudgetsScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -165,30 +165,12 @@ export const BudgetsScreen: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className="budgets-summary">
-            <div className="budgets-summary-item">
-              <span className="budgets-summary-label">{t('budgets.totalBudgeted', 'Total Budgeted')}</span>
-              <AmountDisplay
-                amount={budgets.filter((b) => !b.is_income).reduce((sum, b) => sum + b.amount, 0)}
-                size="lg"
-              />
-            </div>
-            <div className="budgets-summary-item">
-              <span className="budgets-summary-label">{t('budgets.totalSpent', 'Total Spent')}</span>
-              <AmountDisplay
-                amount={-(budgets.filter((b) => !b.is_income).reduce((sum, b) => sum + (b.spent || 0), 0))}
-                size="lg"
-                colorize
-              />
-            </div>
-            <div className="budgets-summary-item">
-              <span className="budgets-summary-label">{t('budgets.totalIncome', 'Total Income')}</span>
-              <AmountDisplay
-                amount={budgets.filter((b) => b.is_income).reduce((sum, b) => sum + b.amount, 0)}
-                size="lg"
-              />
-            </div>
-          </div>
+          <BudgetSummaryWidget
+            totalIncome={summary!.totalIncome}
+            totalBudgeted={summary!.totalBudgeted}
+            totalSpent={summary!.totalSpent}
+            totalRemaining={summary!.totalRemaining}
+          />
 
           <div className="budgets-section">
             <h2 className="section-title">{t('budgets.activeBudgets', 'Active Budgets')}</h2>

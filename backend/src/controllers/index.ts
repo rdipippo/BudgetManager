@@ -5,3 +5,4 @@ export { PlaidController } from './plaid.controller';
 export { TransactionController } from './transaction.controller';
 export { RuleController } from './rule.controller';
 export { BudgetController } from './budget.controller';
+export { SettingsController } from './settings.controller';

@@ -65,6 +65,19 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   INDEX idx_expires_at (expires_at)
 ) ENGINE=InnoDB;
 
+-- User preferences table
+CREATE TABLE IF NOT EXISTS user_preferences (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT UNIQUE NOT NULL,
+  transaction_columns JSON DEFAULT '["name", "date", "category", "amount"]',
+  transaction_sort_field VARCHAR(50) DEFAULT 'date',
+  transaction_sort_direction ENUM('asc', 'desc') DEFAULT 'desc',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_user_id (user_id)
+) ENGINE=InnoDB;
+
 -- Cleanup procedure for expired tokens (optional - can be run via cron)
 DELIMITER //
 CREATE PROCEDURE IF NOT EXISTS cleanup_expired_tokens()

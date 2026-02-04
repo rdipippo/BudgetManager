@@ -18,6 +18,8 @@ import {
   AccountsScreen,
   CategoriesScreen,
   RulesScreen,
+  ReportsScreen,
+  MonthToMonthScreen,
 } from './screens';
 import { Spinner } from './components';
 import './i18n';
@@ -197,6 +199,22 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <RulesScreen />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <ReportsScreen />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports/month-to-month"
+        element={
+          <ProtectedRoute>
+            <MonthToMonthScreen />
           </ProtectedRoute>
         }
       />

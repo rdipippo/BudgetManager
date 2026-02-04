@@ -26,6 +26,13 @@ const BudgetsIcon = () => (
   </svg>
 );
 
+const ReportsIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+    <path d="M22 12A10 10 0 0 0 12 2v10z" />
+  </svg>
+);
+
 const SettingsIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="3" />
@@ -40,6 +47,7 @@ export const SideMenu: React.FC = () => {
     { to: '/', icon: DashboardIcon, label: t('nav.dashboard', 'Dashboard') },
     { to: '/transactions', icon: TransactionsIcon, label: t('nav.transactions', 'Transactions') },
     { to: '/budgets', icon: BudgetsIcon, label: t('nav.budgets', 'Budgets') },
+    { to: '/reports', icon: ReportsIcon, label: t('nav.reports', 'Reports') },
     { to: '/settings', icon: SettingsIcon, label: t('nav.settings', 'Settings') },
   ];
 

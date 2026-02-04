@@ -20,6 +20,8 @@ export const TransactionController = {
         uncategorized,
         limit = '50',
         offset = '0',
+        sortField,
+        sortDirection,
       } = req.query;
 
       const filters = {
@@ -31,6 +33,8 @@ export const TransactionController = {
         uncategorized: uncategorized === 'true',
         limit: parseInt(limit as string),
         offset: parseInt(offset as string),
+        sortField: sortField as string | undefined,
+        sortDirection: sortDirection as 'asc' | 'desc' | undefined,
       };
 
       const [transactions, total] = await Promise.all([

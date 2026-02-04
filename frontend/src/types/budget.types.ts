@@ -94,6 +94,8 @@ export interface TransactionFilters {
   uncategorized?: boolean;
   limit?: number;
   offset?: number;
+  sortField?: string;
+  sortDirection?: 'asc' | 'desc';
 }
 
 export interface BudgetSummary {
