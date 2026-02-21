@@ -26,17 +26,6 @@ const BudgetsIcon = () => (
   </svg>
 );
 
-const ListsIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="8" y1="6" x2="21" y2="6" />
-    <line x1="8" y1="12" x2="21" y2="12" />
-    <line x1="8" y1="18" x2="21" y2="18" />
-    <line x1="3" y1="6" x2="3.01" y2="6" />
-    <line x1="3" y1="12" x2="3.01" y2="12" />
-    <line x1="3" y1="18" x2="3.01" y2="18" />
-  </svg>
-);
-
 const SettingsIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="3" />
@@ -51,7 +40,6 @@ export const BottomNav: React.FC = () => {
     { to: '/', icon: DashboardIcon, label: t('nav.dashboard', 'Dashboard') },
     { to: '/transactions', icon: TransactionsIcon, label: t('nav.transactions', 'Transactions') },
     { to: '/budgets', icon: BudgetsIcon, label: t('nav.budgets', 'Budgets') },
-    { to: '/lists', icon: ListsIcon, label: t('nav.lists', 'Lists') },
     { to: '/settings', icon: SettingsIcon, label: t('nav.settings', 'Settings') },
   ];
 

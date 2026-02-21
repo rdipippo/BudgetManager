@@ -39,6 +39,7 @@ router.post('/exchange-token', authMiddleware, exchangeTokenValidation, PlaidCon
 router.get('/items', authMiddleware, PlaidController.getItems);
 router.post('/items/:id/sync', authMiddleware, idParamValidation, PlaidController.syncItem);
 router.delete('/items/:id', authMiddleware, idParamValidation, PlaidController.deleteItem);
+router.get('/accounts/balance-history', authMiddleware, PlaidController.getBalanceHistory);
 router.patch('/accounts/:id/visibility', authMiddleware, visibilityValidation, PlaidController.setAccountVisibility);
 
 export default router;

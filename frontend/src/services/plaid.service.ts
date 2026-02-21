@@ -62,6 +62,16 @@ export const plaidService = {
       }))
     );
   },
+
+  async getBalanceHistory(
+    accountIds: number[],
+    days: number
+  ): Promise<{ accounts: { id: number; name: string; currentBalance: number | null; history: { date: string; balance: number | null }[] }[] }> {
+    const response = await api.get('/plaid/accounts/balance-history', {
+      params: { accountIds: accountIds.join(','), days },
+    });
+    return response.data;
+  },
 };
 
 export default plaidService;

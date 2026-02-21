@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { transactionService, categoryService } from '../services';
 import { Transaction, Category } from '../types/budget.types';
 import { Spinner, Alert, SideMenu } from '../components';
+import { ReportsNav } from '../components/ReportsNav';
 import { BarChart, BarChartData } from '../components/BarChart';
 import { AmountDisplay } from '../components/AmountDisplay';
 
@@ -146,9 +146,7 @@ export const MonthToMonthScreen: React.FC = () => {
       <SideMenu />
       <div className="reports-header">
         <h1>{t('reports.monthToMonth', 'Month to Month')}</h1>
-        <Link to="/reports" className="reports-nav-link">
-          {t('reports.viewSpendingByCategory', 'View Spending by Category')}
-        </Link>
+        <ReportsNav current="/reports/month-to-month" />
       </div>
 
       {/* Controls */}

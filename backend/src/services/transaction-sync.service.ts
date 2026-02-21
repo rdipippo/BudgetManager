@@ -1,6 +1,6 @@
 import { PlaidService } from './plaid.service';
 import { EncryptionService } from './encryption.service';
-import { PlaidItemModel, PlaidAccountModel, TransactionModel } from '../models';
+import { PlaidItemModel, PlaidAccountModel, TransactionModel, AccountBalanceHistoryModel } from '../models';
 import { Transaction as PlaidTransaction } from 'plaid';
 
 export interface SyncResult {
@@ -138,7 +138,7 @@ export const TransactionSyncService = {
     const accounts = await PlaidService.getAccounts(accessToken);
 
     for (const account of accounts) {
-      await PlaidAccountModel.upsert({
+      const accountId = await PlaidAccountModel.upsert({
         plaid_item_id: itemId,
         plaid_account_id: account.accountId,
         name: account.name,
@@ -150,6 +150,14 @@ export const TransactionSyncService = {
         available_balance: account.availableBalance ?? undefined,
         currency_code: account.currencyCode || undefined,
       });
+      // Record daily balance snapshot
+      if (account.currentBalance !== null && account.currentBalance !== undefined) {
+        await AccountBalanceHistoryModel.record(
+          accountId,
+          account.currentBalance,
+          account.availableBalance ?? null
+        );
+      }
     }
   },
 

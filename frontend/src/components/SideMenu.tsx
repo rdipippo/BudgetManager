@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 const DashboardIcon = () => (
@@ -26,17 +26,6 @@ const BudgetsIcon = () => (
   </svg>
 );
 
-const ListsIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="8" y1="6" x2="21" y2="6" />
-    <line x1="8" y1="12" x2="21" y2="12" />
-    <line x1="8" y1="18" x2="21" y2="18" />
-    <line x1="3" y1="6" x2="3.01" y2="6" />
-    <line x1="3" y1="12" x2="3.01" y2="12" />
-    <line x1="3" y1="18" x2="3.01" y2="18" />
-  </svg>
-);
-
 const ReportsIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
@@ -51,17 +40,104 @@ const SettingsIcon = () => (
   </svg>
 );
 
+const isMobileBrowser = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  if (/Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) return true;
+  return window.innerWidth < 768;
+};
+
+const useIsMobile = (): boolean => {
+  const [mobile, setMobile] = useState(isMobileBrowser);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handler = (e: MediaQueryListEvent) => setMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  return mobile;
+};
+
 export const SideMenu: React.FC = () => {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const location = useLocation();
+
+  // Close drawer on route change
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname]);
+
+  // Prevent body scroll when drawer is open
+  useEffect(() => {
+    if (drawerOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [drawerOpen]);
 
   const navItems = [
     { to: '/', icon: DashboardIcon, label: t('nav.dashboard', 'Dashboard') },
     { to: '/transactions', icon: TransactionsIcon, label: t('nav.transactions', 'Transactions') },
     { to: '/budgets', icon: BudgetsIcon, label: t('nav.budgets', 'Budgets') },
-    { to: '/lists', icon: ListsIcon, label: t('nav.lists', 'Lists') },
     { to: '/reports', icon: ReportsIcon, label: t('nav.reports', 'Reports') },
     { to: '/settings', icon: SettingsIcon, label: t('nav.settings', 'Settings') },
   ];
+
+  if (isMobile) {
+    return (
+      <>
+        <div className="mobile-nav-bar">
+          <div className="side-menu-logo">
+            <span>BM</span>
+          </div>
+          <h2 className="mobile-nav-title">{t('app.name', 'Budget Manager')}</h2>
+          <button
+            className="mobile-nav-hamburger"
+            onClick={() => setDrawerOpen(true)}
+            aria-label={t('nav.menu', 'Menu')}
+            aria-expanded={drawerOpen}
+          >
+            <span className="hamburger-line" />
+            <span className="hamburger-line" />
+            <span className="hamburger-line" />
+          </button>
+        </div>
+
+        {drawerOpen && (
+          <>
+            <div className="mobile-nav-backdrop" onClick={() => setDrawerOpen(false)} />
+            <nav className="mobile-nav-drawer">
+              <div className="side-menu-header">
+                <div className="side-menu-logo">
+                  <span>BM</span>
+                </div>
+                <h2 className="side-menu-title">{t('app.name', 'Budget Manager')}</h2>
+              </div>
+              <div className="side-menu-items">
+                {navItems.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) => `side-menu-item ${isActive ? 'active' : ''}`}
+                    end={item.to === '/'}
+                    onClick={() => setDrawerOpen(false)}
+                  >
+                    <item.icon />
+                    <span>{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            </nav>
+          </>
+        )}
+      </>
+    );
+  }
 
   return (
     <nav className="side-menu">

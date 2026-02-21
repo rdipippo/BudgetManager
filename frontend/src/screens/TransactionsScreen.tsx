@@ -96,22 +96,33 @@ export const TransactionsScreen: React.FC = () => {
   }, [search, selectedCategoryId, selectedAccountId, startDate, endDate, pagination, t, sortField, sortDirection]);
 
   const loadInitialData = async () => {
-    try {
-      const [categoriesData, accountsData, prefsData] = await Promise.all([
-        categoryService.getAll(),
-        plaidService.getAllAccounts(),
-        settingsService.getTransactionPreferences(),
-      ]);
-      setCategories(categoriesData);
-      setAccounts(accountsData.filter((a) => !a.isHidden));
-      setVisibleColumns(prefsData.visibleColumns);
-      setSortField(prefsData.sortField);
-      setSortDirection(prefsData.sortDirection);
-      setPrefsLoaded(true);
-    } catch (err) {
-      console.error('Failed to load initial data:', err);
-      setPrefsLoaded(true);
+    const [categoriesResult, accountsResult, prefsResult] = await Promise.allSettled([
+      categoryService.getAll(),
+      plaidService.getAllAccounts(),
+      settingsService.getTransactionPreferences(),
+    ]);
+
+    if (categoriesResult.status === 'fulfilled') {
+      setCategories(categoriesResult.value);
+    } else {
+      console.error('Failed to load categories:', categoriesResult.reason);
     }
+
+    if (accountsResult.status === 'fulfilled') {
+      setAccounts(accountsResult.value.filter((a) => !a.isHidden));
+    } else {
+      console.error('Failed to load accounts:', accountsResult.reason);
+    }
+
+    if (prefsResult.status === 'fulfilled') {
+      setVisibleColumns(prefsResult.value.visibleColumns);
+      setSortField(prefsResult.value.sortField);
+      setSortDirection(prefsResult.value.sortDirection);
+    } else {
+      console.error('Failed to load preferences:', prefsResult.reason);
+    }
+
+    setPrefsLoaded(true);
   };
 
   const clearFilters = () => {

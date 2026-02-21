@@ -109,25 +109,6 @@ export interface BudgetSummary {
   budgets: Budget[];
 }
 
-export interface List {
-  id: number;
-  user_id: number;
-  name: string;
-  color: string;
-  icon: string;
-  item_count?: number;
-  completed_count?: number;
-}
-
-export interface ListItem {
-  id: number;
-  list_id: number;
-  user_id: number;
-  name: string;
-  is_completed: boolean;
-  sort_order: number;
-}
-
 export interface Pagination {
   total: number;
   limit: number;

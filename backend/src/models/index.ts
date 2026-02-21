@@ -32,5 +32,5 @@ export type { Budget, BudgetWithCategory, BudgetWithSpent, CreateBudgetData, Upd
 export { UserPreferencesModel } from './user-preferences.model';
 export type { UserPreferences, TransactionColumnConfig } from './user-preferences.model';
 
-export { ListModel, ListItemModel } from './list.model';
-export type { List, ListWithCounts, ListItem, CreateListData, UpdateListData, CreateListItemData, UpdateListItemData } from './list.model';
+export { AccountBalanceHistoryModel } from './account-balance-history.model';
+export type { AccountBalanceHistory } from './account-balance-history.model';

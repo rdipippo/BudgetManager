@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware';
 import { PlaidService, EncryptionService, TransactionSyncService } from '../services';
-import { PlaidItemModel, PlaidAccountModel } from '../models';
+import { PlaidItemModel, PlaidAccountModel, AccountBalanceHistoryModel } from '../models';
 
 export const PlaidController = {
   async createLinkToken(req: AuthRequest, res: Response): Promise<void> {
@@ -16,9 +16,11 @@ export const PlaidController = {
         linkToken: result.linkToken,
         expiration: result.expiration,
       });
-    } catch (error) {
-      console.error('Create link token error:', error);
-      res.status(500).json({ error: 'Failed to create link token' });
+    } catch (error: any) {
+      const plaidError = error?.response?.data;
+      console.error('Create link token error:', plaidError || error);
+      const msg = plaidError?.error_message || plaidError?.error_code || 'Failed to create link token';
+      res.status(500).json({ error: msg });
     }
   },
 
@@ -52,7 +54,7 @@ export const PlaidController = {
       // Get and store accounts
       const accounts = await PlaidService.getAccounts(accessToken);
       for (const account of accounts) {
-        await PlaidAccountModel.create({
+        const accountId = await PlaidAccountModel.create({
           plaid_item_id: plaidItemId,
           plaid_account_id: account.accountId,
           name: account.name,
@@ -64,6 +66,14 @@ export const PlaidController = {
           available_balance: account.availableBalance ?? undefined,
           currency_code: account.currencyCode || undefined,
         });
+        // Record initial balance snapshot
+        if (account.currentBalance !== null && account.currentBalance !== undefined) {
+          await AccountBalanceHistoryModel.record(
+            accountId,
+            account.currentBalance,
+            account.availableBalance ?? null
+          );
+        }
       }
 
       // Trigger initial transaction sync
@@ -209,6 +219,7 @@ export const PlaidController = {
         if (webhook_code === 'SYNC_UPDATES_AVAILABLE') {
           const item = await PlaidItemModel.findByPlaidItemId(item_id);
           if (item) {
+            await TransactionSyncService.syncAccounts(item.id);
             await TransactionSyncService.syncItem(item.id, item.user_id);
           }
         }
@@ -230,6 +241,60 @@ export const PlaidController = {
       if (!res.headersSent) {
         res.json({ received: true });
       }
+    }
+  },
+
+  async getBalanceHistory(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.userId) {
+        res.status(401).json({ error: 'Not authenticated' });
+        return;
+      }
+
+      const { accountIds, days } = req.query;
+      const parsedDays = Math.min(Math.max(parseInt(String(days)) || 30, 1), 365);
+      const requestedIds = String(accountIds || '')
+        .split(',')
+        .map(Number)
+        .filter((n) => n > 0);
+
+      if (requestedIds.length === 0) {
+        res.json({ accounts: [] });
+        return;
+      }
+
+      // Verify ownership: only return accounts belonging to the user
+      const userAccounts = await PlaidAccountModel.findByUserId(req.userId);
+      const validIdSet = new Set(userAccounts.map((a) => a.id));
+      const authorizedIds = requestedIds.filter((id) => validIdSet.has(id));
+
+      // Fetch history for authorized accounts
+      const historyRows = await AccountBalanceHistoryModel.findByAccountIds(authorizedIds, parsedDays);
+
+      // Group history by account id
+      const historyByAccount = new Map<number, { date: string; balance: number | null }[]>();
+      for (const row of historyRows) {
+        const list = historyByAccount.get(row.plaid_account_id) || [];
+        list.push({ date: row.date, balance: row.current_balance });
+        historyByAccount.set(row.plaid_account_id, list);
+      }
+
+      // Build response using account metadata
+      const accountMap = new Map(userAccounts.map((a) => [a.id, a]));
+      const result = authorizedIds.map((id) => {
+        const account = accountMap.get(id)!;
+        return {
+          id,
+          name: account.name,
+          currentBalance: account.current_balance,
+          history: historyByAccount.get(id) || [],
+        };
+      });
+
+      res.json({ accounts: result });
+    } catch (error) {
+      console.error('Get balance history error:', error);
+      res.status(500).json({ error: 'Failed to get balance history' });
     }
   },
 

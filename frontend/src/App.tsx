@@ -20,8 +20,7 @@ import {
   RulesScreen,
   ReportsScreen,
   MonthToMonthScreen,
-  ListsScreen,
-  ListDetailScreen,
+  AccountReportScreen,
 } from './screens';
 import { Spinner } from './components';
 import './i18n';
@@ -29,7 +28,6 @@ import './styles/global.css';
 import './styles/components.css';
 import './styles/hamburger-menu.css';
 import './styles/budget.css';
-import './styles/lists.css';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -222,18 +220,10 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
-        path="/lists"
+        path="/reports/account-balances"
         element={
           <ProtectedRoute>
-            <ListsScreen />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/lists/:id"
-        element={
-          <ProtectedRoute>
-            <ListDetailScreen />
+            <AccountReportScreen />
           </ProtectedRoute>
         }
       />

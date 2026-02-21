@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { transactionService, categoryService } from '../services';
-import { Transaction, Category } from '../types/budget.types';
+import { transactionService } from '../services';
+import { Transaction } from '../types/budget.types';
 import { Spinner, Alert, SideMenu, Modal } from '../components';
+import { ReportsNav } from '../components/ReportsNav';
 import { PieChart } from '../components/PieChart';
 import { AmountDisplay } from '../components/AmountDisplay';
 
@@ -23,7 +23,6 @@ export const ReportsScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [categorySpending, setCategorySpending] = useState<CategorySpending[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [totalIncome, setTotalIncome] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<CategorySpending | null>(null);
   const [transactionsModalOpen, setTransactionsModalOpen] = useState(false);
@@ -31,24 +30,10 @@ export const ReportsScreen: React.FC = () => {
   const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
 
   useEffect(() => {
-    loadCategories();
-  }, []);
-
-  useEffect(() => {
     loadReport();
-  }, [selectedYear, selectedMonth, categories]);
-
-  const loadCategories = async () => {
-    try {
-      const data = await categoryService.getAll();
-      setCategories(data);
-    } catch (err) {
-      console.error('Failed to load categories:', err);
-    }
-  };
+  }, [selectedYear, selectedMonth]);
 
   const loadReport = async () => {
-    if (categories.length === 0) return;
 
     try {
       setLoading(true);
@@ -71,13 +56,15 @@ export const ReportsScreen: React.FC = () => {
       let incomeTotal = 0;
 
       data.transactions.forEach((txn: Transaction) => {
-        if (txn.amount < 0) { // Expenses
-          const current = spendingMap.get(txn.category_id) || { amount: 0, transactions: [] };
-          current.amount += Math.abs(txn.amount);
+        const amt = Number(txn.amount);
+        const categoryId = txn.category_id != null ? Number(txn.category_id) : null;
+        if (amt > 0) { // Expenses
+          const current = spendingMap.get(categoryId) || { amount: 0, transactions: [] };
+          current.amount += amt;
           current.transactions.push(txn);
-          spendingMap.set(txn.category_id, current);
-        } else if (txn.amount > 0) { // Income
-          incomeTotal += txn.amount;
+          spendingMap.set(categoryId, current);
+        } else if (amt < 0) { // Income
+          incomeTotal += Math.abs(amt);
         }
       });
 
@@ -87,11 +74,11 @@ export const ReportsScreen: React.FC = () => {
       const spending: CategorySpending[] = [];
 
       spendingMap.forEach((data, categoryId) => {
-        const category = categories.find(c => c.id === categoryId);
+        const firstTxn = data.transactions[0];
         spending.push({
           categoryId,
-          categoryName: category?.name || t('reports.uncategorized', 'Uncategorized'),
-          categoryColor: category?.color || '#6B7280',
+          categoryName: firstTxn?.category_name || t('reports.uncategorized', 'Uncategorized'),
+          categoryColor: firstTxn?.category_color || '#6B7280',
           amount: data.amount,
           transactions: data.transactions,
         });
@@ -161,9 +148,7 @@ export const ReportsScreen: React.FC = () => {
       <SideMenu />
       <div className="reports-header">
         <h1>{t('reports.title', 'Reports')}</h1>
-        <Link to="/reports/month-to-month" className="reports-nav-link">
-          {t('reports.viewMonthToMonth', 'View Month to Month')}
-        </Link>
+        <ReportsNav current="/reports" />
       </div>
 
       {/* Month Navigation */}

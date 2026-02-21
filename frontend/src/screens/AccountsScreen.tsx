@@ -13,6 +13,7 @@ export const AccountsScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [linkToken, setLinkToken] = useState<string | null>(null);
+  const [linkTokenLoading, setLinkTokenLoading] = useState(true);
   const [syncing, setSyncing] = useState<number | null>(null);
 
   const loadItems = async () => {
@@ -30,10 +31,14 @@ export const AccountsScreen: React.FC = () => {
 
   const generateLinkToken = async () => {
     try {
+      setLinkTokenLoading(true);
       const token = await plaidService.createLinkToken();
       setLinkToken(token);
-    } catch (err) {
-      setError(t('accounts.linkError', 'Failed to initialize bank connection'));
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'Failed to initialize bank connection';
+      setError(msg);
+    } finally {
+      setLinkTokenLoading(false);
     }
   };
 
@@ -121,8 +126,8 @@ export const AccountsScreen: React.FC = () => {
           <EmptyState
             title={t('accounts.noAccounts', 'No Linked Accounts')}
             description={t('accounts.linkFirst', 'Link your bank account to automatically sync transactions')}
-            actionLabel={t('accounts.linkAccount', 'Link Bank Account')}
-            onAction={() => open()}
+            actionLabel={linkTokenLoading ? 'Loading...' : t('accounts.linkAccount', 'Link Bank Account')}
+            onAction={ready ? () => open() : undefined}
           />
         </div>
       ) : (

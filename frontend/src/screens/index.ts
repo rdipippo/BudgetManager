@@ -17,5 +17,4 @@ export { RulesScreen } from './RulesScreen';
 export { TransactionFormScreen } from './TransactionFormScreen';
 export { ReportsScreen } from './ReportsScreen';
 export { MonthToMonthScreen } from './MonthToMonthScreen';
-export { ListsScreen } from './ListsScreen';
-export { ListDetailScreen } from './ListDetailScreen';
+export { AccountReportScreen } from './AccountReportScreen';

@@ -7,7 +7,6 @@ export { budgetService } from './budget.service';
 export { plaidService } from './plaid.service';
 export { ruleService } from './rule.service';
 export { settingsService } from './settings.service';
-export { listService } from './list.service';
 export type { TransactionColumnConfig } from './settings.service';
 export type {
   User,

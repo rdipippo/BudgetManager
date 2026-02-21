@@ -40,8 +40,6 @@ export const UserPreferencesModel = {
         sortDirection: DEFAULT_SORT_DIRECTION,
       };
     }
-    console.log(typeof prefs.transaction_columns);
-console.log(prefs.transaction_columns);
     return {
       visibleColumns: prefs.transaction_columns ? prefs.transaction_columns as unknown: DEFAULT_COLUMNS,
       sortField: prefs.transaction_sort_field || DEFAULT_SORT_FIELD,
@@ -85,7 +83,7 @@ console.log(prefs.transaction_columns);
          VALUES (?, ?, ?, ?)`,
         [
           userId,
-          '(' + JSON.stringify(config.visibleColumns || DEFAULT_COLUMNS) + ')',
+          JSON.stringify(config.visibleColumns || DEFAULT_COLUMNS),
           config.sortField || DEFAULT_SORT_FIELD,
           config.sortDirection || DEFAULT_SORT_DIRECTION,
         ]
