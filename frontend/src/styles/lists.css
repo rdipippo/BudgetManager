@@ -1,0 +1,240 @@
+/* Lists Screen */
+.lists-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.lists-header h1 {
+  flex: 1;
+}
+
+.lists-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.list-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.list-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.list-card-color {
+  width: 8px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.list-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-card-name {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list-card-count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.list-card-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.list-card-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.list-card-action:hover {
+  background: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+.list-card-action-danger:hover {
+  color: var(--color-error);
+}
+
+/* List Detail Screen */
+.list-detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.list-detail-header h1 {
+  flex: 1;
+  font-size: var(--font-size-xl);
+}
+
+.list-detail-content {
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.list-add-item {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.list-add-item .input-wrapper,
+.list-add-item input {
+  flex: 1;
+}
+
+.list-add-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: none;
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast);
+}
+
+.list-add-button:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.list-add-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.list-items {
+  display: flex;
+  flex-direction: column;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.list-item-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: color var(--transition-fast);
+}
+
+.list-item-checkbox:hover {
+  color: var(--color-primary);
+}
+
+.list-item-checkbox.checked {
+  color: var(--color-success, #10B981);
+}
+
+.list-item-name {
+  flex: 1;
+  font-size: var(--font-size-md);
+  color: var(--color-text-primary);
+  word-break: break-word;
+}
+
+.list-item-done .list-item-name {
+  text-decoration: line-through;
+  color: var(--color-text-secondary);
+}
+
+.list-item-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  opacity: 0;
+  transition: all var(--transition-fast);
+}
+
+.list-item:hover .list-item-delete {
+  opacity: 1;
+}
+
+.list-item-delete:hover {
+  color: var(--color-error);
+}
+
+.list-completed-divider {
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-md) 0 var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.list-empty {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  color: var(--color-text-secondary);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+  color: var(--color-text-secondary);
+}

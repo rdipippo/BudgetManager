@@ -28,6 +28,7 @@ import './styles/global.css';
 import './styles/components.css';
 import './styles/hamburger-menu.css';
 import './styles/budget.css';
+import './styles/lists.css';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -223,8 +224,6 @@ const AppRoutes: React.FC = () => {
         path="/reports/account-balances"
         element={
           <ProtectedRoute>
-            <AccountReportScreen />
-          </ProtectedRoute>
         }
       />
       <Route
