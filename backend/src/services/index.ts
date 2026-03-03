@@ -1,6 +1,6 @@
 export { PasswordService } from './password.service';
 export { TokenService } from './token.service';
-export type { JwtPayload, TokenPair } from './token.service';
+export type { JwtPayload, TokenPair, MembershipContext } from './token.service';
 export { EmailService } from './email.service';
 export { EncryptionService } from './encryption.service';
 export { PlaidService } from './plaid.service';

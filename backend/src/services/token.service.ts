@@ -11,6 +11,18 @@ export interface JwtPayload {
   userId: number;
   email: string;
   role: string;
+  // Membership context (set when the user is a member of another account)
+  primaryUserId?: number;       // Owner's userId (for full/advisor access data queries)
+  accessType?: 'full' | 'partial' | 'advisor';
+  membershipId?: number;        // Active membership ID
+  partialOwnerUserId?: number;  // Owner's userId when accessType is 'partial' (for transaction queries)
+}
+
+export interface MembershipContext {
+  primaryUserId?: number;
+  accessType: 'full' | 'partial' | 'advisor';
+  membershipId: number;
+  partialOwnerUserId?: number;
 }
 
 export interface TokenPair {
@@ -63,10 +75,32 @@ export const TokenService = {
     await RefreshTokenModel.revokeAllForUser(userId);
   },
 
-  async generateTokenPair(userId: number, email: string, role: string): Promise<TokenPair> {
-    const accessToken = this.generateAccessToken({ userId, email, role });
+  async generateTokenPair(
+    userId: number,
+    email: string,
+    role: string,
+    membershipContext?: MembershipContext
+  ): Promise<TokenPair> {
+    const payload: JwtPayload = { userId, email, role };
+    if (membershipContext) {
+      payload.accessType = membershipContext.accessType;
+      payload.membershipId = membershipContext.membershipId;
+      if (membershipContext.primaryUserId) {
+        payload.primaryUserId = membershipContext.primaryUserId;
+      }
+      if (membershipContext.partialOwnerUserId) {
+        payload.partialOwnerUserId = membershipContext.partialOwnerUserId;
+      }
+    }
+    const accessToken = this.generateAccessToken(payload);
     const refreshToken = await this.generateRefreshToken(userId);
     return { accessToken, refreshToken };
+  },
+
+  async generateInvitationToken(): Promise<{ token: string; tokenHash: string }> {
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(token);
+    return { token, tokenHash };
   },
 
   async generateEmailVerificationToken(userId: number): Promise<string> {

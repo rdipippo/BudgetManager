@@ -1,4 +1,12 @@
-export { authMiddleware, optionalAuthMiddleware, adminMiddleware, superAdminMiddleware } from './auth.middleware';
+export {
+  authMiddleware,
+  optionalAuthMiddleware,
+  adminMiddleware,
+  superAdminMiddleware,
+  canSendInvitationsMiddleware,
+  canManageAccountsMiddleware,
+  canDeleteTransactionsMiddleware,
+} from './auth.middleware';
 export type { AuthRequest } from './auth.middleware';
 
 export {
@@ -15,4 +23,6 @@ export {
   resetPasswordValidation,
   refreshTokenValidation,
   changePasswordValidation,
+  sendInvitationValidation,
+  acceptInvitationValidation,
 } from './validation.middleware';

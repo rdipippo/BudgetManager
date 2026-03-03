@@ -37,9 +37,18 @@ export const TransactionController = {
         sortDirection: sortDirection as 'asc' | 'desc' | undefined,
       };
 
+      // For partial access, query the owner's transactions filtered by allowed accounts
+      const transactionUserId = req.accessType === 'partial' && req.partialOwnerUserId
+        ? req.partialOwnerUserId
+        : req.effectiveUserId!;
+
+      const partialAccountFilter = req.accessType === 'partial' && req.allowedAccountIds?.length
+        ? req.allowedAccountIds
+        : undefined;
+
       const [transactions, total] = await Promise.all([
-        TransactionModel.findByUserId(req.userId, filters),
-        TransactionModel.countByUserId(req.userId, filters),
+        TransactionModel.findByUserId(transactionUserId, filters, partialAccountFilter),
+        TransactionModel.countByUserId(transactionUserId, filters, partialAccountFilter),
       ]);
 
       res.json({
@@ -64,12 +73,24 @@ export const TransactionController = {
         return;
       }
 
+      const transactionUserId = req.accessType === 'partial' && req.partialOwnerUserId
+        ? req.partialOwnerUserId
+        : req.effectiveUserId!;
+
       const { id } = req.params;
-      const transaction = await TransactionModel.findByIdAndUser(parseInt(id), req.userId);
+      const transaction = await TransactionModel.findByIdAndUser(parseInt(id), transactionUserId);
 
       if (!transaction) {
         res.status(404).json({ error: 'Transaction not found' });
         return;
+      }
+
+      // For partial access, verify the transaction belongs to an allowed account
+      if (req.accessType === 'partial' && req.allowedAccountIds?.length) {
+        if (transaction.plaid_account_id && !req.allowedAccountIds.includes(transaction.plaid_account_id)) {
+          res.status(404).json({ error: 'Transaction not found' });
+          return;
+        }
       }
 
       res.json({ transaction });
@@ -86,11 +107,12 @@ export const TransactionController = {
         return;
       }
 
+      const userId = req.effectiveUserId!;
       const { amount, date, merchantName, description, categoryId, notes } = req.body;
 
       // Validate category if provided
       if (categoryId) {
-        const category = await CategoryModel.findByIdAndUser(categoryId, req.userId);
+        const category = await CategoryModel.findByIdAndUser(categoryId, userId);
         if (!category) {
           res.status(400).json({ error: 'Category not found' });
           return;
@@ -98,7 +120,7 @@ export const TransactionController = {
       }
 
       const transactionId = await TransactionModel.create({
-        user_id: req.userId,
+        user_id: userId,
         amount,
         date,
         merchant_name: merchantName,
@@ -123,10 +145,11 @@ export const TransactionController = {
         return;
       }
 
+      const userId = req.effectiveUserId!;
       const { id } = req.params;
       const { amount, date, merchantName, description, categoryId, notes } = req.body;
 
-      const transaction = await TransactionModel.findByIdAndUser(parseInt(id), req.userId);
+      const transaction = await TransactionModel.findByIdAndUser(parseInt(id), userId);
       if (!transaction) {
         res.status(404).json({ error: 'Transaction not found' });
         return;
@@ -134,14 +157,14 @@ export const TransactionController = {
 
       // Validate category if provided
       if (categoryId !== undefined && categoryId !== null) {
-        const category = await CategoryModel.findByIdAndUser(categoryId, req.userId);
+        const category = await CategoryModel.findByIdAndUser(categoryId, userId);
         if (!category) {
           res.status(400).json({ error: 'Category not found' });
           return;
         }
       }
 
-      const updated = await TransactionModel.update(parseInt(id), req.userId, {
+      const updated = await TransactionModel.update(parseInt(id), userId, {
         amount,
         date,
         merchant_name: merchantName,
@@ -170,10 +193,11 @@ export const TransactionController = {
         return;
       }
 
+      const userId = req.effectiveUserId!;
       const { id } = req.params;
       const { categoryId } = req.body;
 
-      const transaction = await TransactionModel.findByIdAndUser(parseInt(id), req.userId);
+      const transaction = await TransactionModel.findByIdAndUser(parseInt(id), userId);
       if (!transaction) {
         res.status(404).json({ error: 'Transaction not found' });
         return;
@@ -181,18 +205,18 @@ export const TransactionController = {
 
       // Validate category if provided
       if (categoryId !== null) {
-        const category = await CategoryModel.findByIdAndUser(categoryId, req.userId);
+        const category = await CategoryModel.findByIdAndUser(categoryId, userId);
         if (!category) {
           res.status(400).json({ error: 'Category not found' });
           return;
         }
       }
 
-      await TransactionModel.updateCategory(parseInt(id), req.userId, categoryId);
+      await TransactionModel.updateCategory(parseInt(id), userId, categoryId);
 
       // Learn from this categorization for future auto-categorization
       if (categoryId) {
-        await CategorizationService.learnFromCategorization(req.userId, parseInt(id), categoryId);
+        await CategorizationService.learnFromCategorization(userId, parseInt(id), categoryId);
       }
 
       const updatedTransaction = await TransactionModel.findById(parseInt(id));
@@ -210,9 +234,10 @@ export const TransactionController = {
         return;
       }
 
+      const userId = req.effectiveUserId!;
       const { id } = req.params;
 
-      const transaction = await TransactionModel.findByIdAndUser(parseInt(id), req.userId);
+      const transaction = await TransactionModel.findByIdAndUser(parseInt(id), userId);
       if (!transaction) {
         res.status(404).json({ error: 'Transaction not found' });
         return;
@@ -223,7 +248,7 @@ export const TransactionController = {
         return;
       }
 
-      const deleted = await TransactionModel.delete(parseInt(id), req.userId);
+      const deleted = await TransactionModel.delete(parseInt(id), userId);
 
       if (!deleted) {
         res.status(404).json({ error: 'Transaction not found or cannot be deleted' });
@@ -244,6 +269,7 @@ export const TransactionController = {
         return;
       }
 
+      const userId = req.effectiveUserId!;
       const { transactionIds, categoryId, notes, date } = req.body;
 
       if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
@@ -258,7 +284,7 @@ export const TransactionController = {
 
       // Validate category if provided
       if (categoryId !== undefined && categoryId !== null) {
-        const category = await CategoryModel.findByIdAndUser(categoryId, req.userId);
+        const category = await CategoryModel.findByIdAndUser(categoryId, userId);
         if (!category) {
           res.status(400).json({ error: 'Category not found' });
           return;
@@ -271,7 +297,7 @@ export const TransactionController = {
       if (date !== undefined) updates.date = date;
 
       const affectedRows = await TransactionModel.updateMultiple(
-        req.userId,
+        userId,
         transactionIds.map((id: string | number) => parseInt(String(id))),
         updates
       );

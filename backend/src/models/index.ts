@@ -34,3 +34,11 @@ export type { UserPreferences, TransactionColumnConfig } from './user-preference
 
 export { AccountBalanceHistoryModel } from './account-balance-history.model';
 export type { AccountBalanceHistory } from './account-balance-history.model';
+
+export { InvitationModel, MembershipModel } from './invitation.model';
+export type {
+  AccountInvitation,
+  AccountInvitationWithOwner,
+  AccountMembership,
+  MembershipWithUser,
+} from './invitation.model';

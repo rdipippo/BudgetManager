@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { TransactionController } from '../controllers';
-import { authMiddleware } from '../middleware';
+import { authMiddleware, canDeleteTransactionsMiddleware } from '../middleware';
 import { body, param, query } from 'express-validator';
 import { handleValidationErrors } from '../middleware/validation.middleware';
 
@@ -134,6 +134,6 @@ router.get('/:id', idParamValidation, TransactionController.getById);
 router.post('/', createTransactionValidation, TransactionController.create);
 router.put('/:id', idParamValidation, updateTransactionValidation, TransactionController.update);
 router.put('/:id/category', idParamValidation, updateCategoryValidation, TransactionController.updateCategory);
-router.delete('/:id', idParamValidation, TransactionController.delete);
+router.delete('/:id', idParamValidation, canDeleteTransactionsMiddleware, TransactionController.delete);
 
 export default router;

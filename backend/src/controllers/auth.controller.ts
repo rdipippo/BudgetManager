@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { UserModel, CategoryModel } from '../models';
-import { PasswordService, TokenService, EmailService } from '../services';
+import { UserModel, CategoryModel, MembershipModel } from '../models';
+import { PasswordService, TokenService, EmailService, MembershipContext } from '../services';
 import { AuthRequest } from '../middleware';
 
 export const AuthController = {
@@ -77,8 +77,14 @@ export const AuthController = {
         return;
       }
 
+      // Check if this user is a member of another account and include membership context in JWT
+      const membership = await MembershipModel.findActiveByMember(user.id);
+      const membershipContext = membership
+        ? buildMembershipContext(membership.access_type, membership.owner_user_id, membership.id)
+        : undefined;
+
       // Generate tokens
-      const tokens = await TokenService.generateTokenPair(user.id, user.email, user.role);
+      const tokens = await TokenService.generateTokenPair(user.id, user.email, user.role, membershipContext);
 
       // Set refresh token in HTTP-only cookie for web clients
       const cookieMaxAge = rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
@@ -152,7 +158,14 @@ export const AuthController = {
 
       // Revoke old refresh token and generate new token pair
       await TokenService.revokeRefreshToken(tokenData.tokenId);
-      const tokens = await TokenService.generateTokenPair(user.id, user.email, user.role);
+
+      // Preserve membership context on refresh
+      const membership = await MembershipModel.findActiveByMember(user.id);
+      const membershipContext = membership
+        ? buildMembershipContext(membership.access_type, membership.owner_user_id, membership.id)
+        : undefined;
+
+      const tokens = await TokenService.generateTokenPair(user.id, user.email, user.role, membershipContext);
 
       // Update cookie
       res.cookie('refreshToken', tokens.refreshToken, {
@@ -335,3 +348,24 @@ export const AuthController = {
     }
   },
 };
+
+function buildMembershipContext(
+  accessType: 'full' | 'partial' | 'advisor',
+  ownerUserId: number,
+  membershipId: number
+): MembershipContext {
+  if (accessType === 'full' || accessType === 'advisor') {
+    return {
+      primaryUserId: ownerUserId,
+      accessType,
+      membershipId,
+    };
+  } else {
+    // partial access
+    return {
+      accessType,
+      membershipId,
+      partialOwnerUserId: ownerUserId,
+    };
+  }
+}
