@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { TokenService } from '../services';
-import { UserModel, UserAllowedAccountsModel } from '../models';
+import { UserModel, InvitationModel } from '../models';
 
 export interface AuthRequest extends Request {
   userId?: number;
@@ -58,8 +58,10 @@ export const authMiddleware = async (
       req.effectiveUserId = payload.ownerUserId;
     } else if (payload.role === 'partial') {
       req.effectiveUserId = payload.userId;
-      // Load allowed account IDs for this partial-access user
-      req.allowedAccountIds = await UserAllowedAccountsModel.getForUser(payload.userId);
+      // Load allowed account IDs from the accepted invitation
+      req.allowedAccountIds = await InvitationModel.getActiveAllowedAccountsForUser(
+        payload.email, payload.ownerUserId
+      );
     }
   } else {
     req.effectiveUserId = payload.userId;

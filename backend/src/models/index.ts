@@ -1,4 +1,4 @@
-export { UserModel, UserAllowedAccountsModel } from './user.model';
+export { UserModel } from './user.model';
 export type { User, CreateUserData, UserPublic, MemberWithUser } from './user.model';
 
 export {

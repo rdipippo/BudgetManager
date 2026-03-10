@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware';
-import { InvitationModel, UserModel, UserAllowedAccountsModel, CategoryModel } from '../models';
+import { InvitationModel, UserModel, CategoryModel } from '../models';
 import { TokenService, EmailService, PasswordService } from '../services';
 
 const INVITATION_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -245,12 +245,9 @@ export const InvitationController = {
         await CategoryModel.createDefaultsForUser(newUserId);
       }
 
-      // Copy allowed accounts from invitation (for partial access)
+      // Activate allowed accounts for partial access
       if (invitation.access_type === 'partial') {
-        const allowedAccountIds = await InvitationModel.getAllowedAccounts(invitation.id);
-        for (const accountId of allowedAccountIds) {
-          await UserAllowedAccountsModel.add(newUserId, accountId);
-        }
+        await InvitationModel.activateAllowedAccounts(invitation.id);
       }
 
       // Mark invitation as used

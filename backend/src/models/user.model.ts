@@ -171,19 +171,3 @@ export const UserModel = {
   },
 };
 
-export const UserAllowedAccountsModel = {
-  async add(userId: number, plaidAccountId: number): Promise<void> {
-    await pool.execute(
-      'INSERT IGNORE INTO user_allowed_accounts (user_id, plaid_account_id) VALUES (?, ?)',
-      [userId, plaidAccountId]
-    );
-  },
-
-  async getForUser(userId: number): Promise<number[]> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT plaid_account_id FROM user_allowed_accounts WHERE user_id = ?',
-      [userId]
-    );
-    return rows.map((r) => r.plaid_account_id);
-  },
-};

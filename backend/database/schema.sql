@@ -302,21 +302,14 @@ CREATE TABLE IF NOT EXISTS account_invitations (
   INDEX idx_expires_at (expires_at)
 ) ENGINE=InnoDB;
 
--- Allowed plaid accounts for partial-access invitations (copied to user_allowed_accounts on accept)
+-- Allowed plaid accounts for partial-access invitations.
+-- active = FALSE while invitation is pending; set to TRUE when invitation is accepted.
 CREATE TABLE IF NOT EXISTS invitation_allowed_accounts (
   invitation_id INT NOT NULL,
   plaid_account_id INT NOT NULL,
+  active BOOLEAN DEFAULT FALSE,
   PRIMARY KEY (invitation_id, plaid_account_id),
   FOREIGN KEY (invitation_id) REFERENCES account_invitations(id) ON DELETE CASCADE,
-  FOREIGN KEY (plaid_account_id) REFERENCES plaid_accounts(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
-
--- Allowed plaid accounts for active partial-access members
-CREATE TABLE IF NOT EXISTS user_allowed_accounts (
-  user_id INT NOT NULL,
-  plaid_account_id INT NOT NULL,
-  PRIMARY KEY (user_id, plaid_account_id),
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (plaid_account_id) REFERENCES plaid_accounts(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 

@@ -81,15 +81,27 @@ export const InvitationModel = {
 
   async addAllowedAccount(invitationId: number, plaidAccountId: number): Promise<void> {
     await pool.execute(
-      'INSERT IGNORE INTO invitation_allowed_accounts (invitation_id, plaid_account_id) VALUES (?, ?)',
+      'INSERT IGNORE INTO invitation_allowed_accounts (invitation_id, plaid_account_id, active) VALUES (?, ?, FALSE)',
       [invitationId, plaidAccountId]
     );
   },
 
-  async getAllowedAccounts(invitationId: number): Promise<number[]> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT plaid_account_id FROM invitation_allowed_accounts WHERE invitation_id = ?',
+  // Called when invitation is accepted — marks all rows active so middleware can load them
+  async activateAllowedAccounts(invitationId: number): Promise<void> {
+    await pool.execute(
+      'UPDATE invitation_allowed_accounts SET active = TRUE WHERE invitation_id = ?',
       [invitationId]
+    );
+  },
+
+  // Returns allowed plaid_account_ids for an active partial-access member
+  async getActiveAllowedAccountsForUser(email: string, ownerUserId: number): Promise<number[]> {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT iaa.plaid_account_id
+       FROM invitation_allowed_accounts iaa
+       JOIN account_invitations ai ON ai.id = iaa.invitation_id
+       WHERE ai.invitee_email = ? AND ai.owner_user_id = ? AND iaa.active = TRUE`,
+      [email.toLowerCase(), ownerUserId]
     );
     return rows.map((r) => r.plaid_account_id);
   },
