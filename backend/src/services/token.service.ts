@@ -69,6 +69,12 @@ export const TokenService = {
     return { accessToken, refreshToken };
   },
 
+  async generateInvitationToken(): Promise<{ token: string; tokenHash: string }> {
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(token);
+    return { token, tokenHash };
+  },
+
   async generateEmailVerificationToken(userId: number): Promise<string> {
     const token = crypto.randomBytes(32).toString('hex');
     const tokenHash = this.hashToken(token);
