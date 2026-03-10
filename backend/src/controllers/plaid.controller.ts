@@ -11,7 +11,7 @@ export const PlaidController = {
         return;
       }
 
-      const result = await PlaidService.createLinkToken(req.effectiveUserId!);
+      const result = await PlaidService.createLinkToken((req.ownerUserId ?? req.userId)!);
       res.json({
         linkToken: result.linkToken,
         expiration: result.expiration,
@@ -44,7 +44,7 @@ export const PlaidController = {
 
       // Store the plaid item
       const plaidItemId = await PlaidItemModel.create({
-        user_id: req.effectiveUserId!,
+        user_id: (req.ownerUserId ?? req.userId)!,
         plaid_item_id: itemId,
         access_token_encrypted: encryptedToken,
         institution_id: institution.institutionId || undefined,
@@ -77,7 +77,7 @@ export const PlaidController = {
       }
 
       // Trigger initial transaction sync
-      const syncResult = await TransactionSyncService.syncItem(plaidItemId, req.effectiveUserId!);
+      const syncResult = await TransactionSyncService.syncItem(plaidItemId, (req.ownerUserId ?? req.userId)!);
 
       res.json({
         message: 'Account linked successfully',
@@ -100,7 +100,7 @@ export const PlaidController = {
         return;
       }
 
-      const items = await PlaidItemModel.findByUserId(req.effectiveUserId!);
+      const items = await PlaidItemModel.findByUserId((req.ownerUserId ?? req.userId)!);
 
       // Get accounts for each item
       const itemsWithAccounts = await Promise.all(
@@ -145,7 +145,7 @@ export const PlaidController = {
       const { id } = req.params;
       const itemId = parseInt(id);
 
-      const item = await PlaidItemModel.findByIdAndUser(itemId, req.effectiveUserId!);
+      const item = await PlaidItemModel.findByIdAndUser(itemId, (req.ownerUserId ?? req.userId)!);
       if (!item) {
         res.status(404).json({ error: 'Item not found' });
         return;
@@ -155,7 +155,7 @@ export const PlaidController = {
       await TransactionSyncService.syncAccounts(itemId);
 
       // Then sync transactions
-      const result = await TransactionSyncService.syncItem(itemId, req.effectiveUserId!);
+      const result = await TransactionSyncService.syncItem(itemId, (req.ownerUserId ?? req.userId)!);
 
       res.json({
         message: 'Sync completed',
@@ -180,7 +180,7 @@ export const PlaidController = {
       const { id } = req.params;
       const itemId = parseInt(id);
 
-      const item = await PlaidItemModel.findByIdAndUser(itemId, req.effectiveUserId!);
+      const item = await PlaidItemModel.findByIdAndUser(itemId, (req.ownerUserId ?? req.userId)!);
       if (!item) {
         res.status(404).json({ error: 'Item not found' });
         return;
@@ -196,7 +196,7 @@ export const PlaidController = {
       }
 
       // Delete from database (cascades to accounts and sets transactions plaid_account_id to null)
-      await PlaidItemModel.delete(itemId, req.effectiveUserId!);
+      await PlaidItemModel.delete(itemId, (req.ownerUserId ?? req.userId)!);
 
       res.json({ message: 'Account unlinked successfully' });
     } catch (error) {
@@ -264,7 +264,7 @@ export const PlaidController = {
       }
 
       // Verify ownership: only return accounts belonging to the user
-      const userAccounts = await PlaidAccountModel.findByUserId(req.effectiveUserId!);
+      const userAccounts = await PlaidAccountModel.findByUserId((req.ownerUserId ?? req.userId)!);
       const validIdSet = new Set(userAccounts.map((a) => a.id));
       const authorizedIds = requestedIds.filter((id) => validIdSet.has(id));
 
@@ -321,7 +321,7 @@ export const PlaidController = {
         return;
       }
 
-      const item = await PlaidItemModel.findByIdAndUser(account.plaid_item_id, req.effectiveUserId!);
+      const item = await PlaidItemModel.findByIdAndUser(account.plaid_item_id, (req.ownerUserId ?? req.userId)!);
       if (!item) {
         res.status(404).json({ error: 'Account not found' });
         return;

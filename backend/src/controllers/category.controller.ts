@@ -10,7 +10,7 @@ export const CategoryController = {
         return;
       }
 
-      const userId = req.effectiveUserId!;
+      const userId = (req.ownerUserId ?? req.userId)!;
       const categories = await CategoryModel.findByUserId(userId);
       res.json({ categories });
     } catch (error) {
@@ -26,7 +26,7 @@ export const CategoryController = {
         return;
       }
 
-      const userId = req.effectiveUserId!;
+      const userId = (req.ownerUserId ?? req.userId)!;
       const { id } = req.params;
       const category = await CategoryModel.findByIdAndUser(parseInt(id), userId);
 
@@ -49,7 +49,7 @@ export const CategoryController = {
         return;
       }
 
-      const userId = req.effectiveUserId!;
+      const userId = (req.ownerUserId ?? req.userId)!;
       const { name, color, icon, parentId, isIncome } = req.body;
 
       // Check for duplicate name
@@ -92,7 +92,7 @@ export const CategoryController = {
         return;
       }
 
-      const userId = req.effectiveUserId!;
+      const userId = (req.ownerUserId ?? req.userId)!;
       const { id } = req.params;
       const { name, color, icon, parentId, sortOrder, isIncome } = req.body;
 
@@ -159,7 +159,7 @@ export const CategoryController = {
         return;
       }
 
-      const userId = req.effectiveUserId!;
+      const userId = (req.ownerUserId ?? req.userId)!;
       const { id } = req.params;
 
       // Check category exists and belongs to user

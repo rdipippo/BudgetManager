@@ -9,7 +9,7 @@ export const InvitationController = {
   // POST /api/invitations — send an invitation (owner or full-access member only)
   async sendInvitation(req: AuthRequest, res: Response): Promise<void> {
     try {
-      if (!req.userId || !req.effectiveUserId) {
+      if (!req.userId) {
         res.status(401).json({ error: 'Not authenticated' });
         return;
       }
@@ -18,7 +18,7 @@ export const InvitationController = {
       const inviteeEmail = email.toLowerCase();
 
       // Invitations are always sent on behalf of the account owner
-      const ownerUserId = req.effectiveUserId;
+      const ownerUserId = (req.ownerUserId ?? req.userId)!;
 
       const ownerUser = await UserModel.findById(ownerUserId);
       if (!ownerUser) {
@@ -76,12 +76,12 @@ export const InvitationController = {
   // GET /api/invitations — list pending invitations sent by this owner
   async getInvitations(req: AuthRequest, res: Response): Promise<void> {
     try {
-      if (!req.effectiveUserId) {
+      if (!req.userId) {
         res.status(401).json({ error: 'Not authenticated' });
         return;
       }
 
-      const invitations = await InvitationModel.findByOwner(req.effectiveUserId);
+      const invitations = await InvitationModel.findByOwner((req.ownerUserId ?? req.userId)!);
       res.json({ invitations });
     } catch (error) {
       console.error('Get invitations error:', error);
@@ -92,13 +92,13 @@ export const InvitationController = {
   // DELETE /api/invitations/:id — revoke a pending invitation
   async revokeInvitation(req: AuthRequest, res: Response): Promise<void> {
     try {
-      if (!req.effectiveUserId) {
+      if (!req.userId) {
         res.status(401).json({ error: 'Not authenticated' });
         return;
       }
 
       const { id } = req.params;
-      const revoked = await InvitationModel.revoke(parseInt(id), req.effectiveUserId);
+      const revoked = await InvitationModel.revoke(parseInt(id), (req.ownerUserId ?? req.userId)!);
 
       if (!revoked) {
         res.status(404).json({ error: 'Invitation not found' });
@@ -115,12 +115,12 @@ export const InvitationController = {
   // GET /api/invitations/members — list active members of this account
   async getMembers(req: AuthRequest, res: Response): Promise<void> {
     try {
-      if (!req.effectiveUserId) {
+      if (!req.userId) {
         res.status(401).json({ error: 'Not authenticated' });
         return;
       }
 
-      const members = await UserModel.findMembersByOwner(req.effectiveUserId);
+      const members = await UserModel.findMembersByOwner((req.ownerUserId ?? req.userId)!);
       res.json({ members });
     } catch (error) {
       console.error('Get members error:', error);
@@ -131,13 +131,13 @@ export const InvitationController = {
   // DELETE /api/invitations/members/:id — disable a member (revoke access)
   async removeMember(req: AuthRequest, res: Response): Promise<void> {
     try {
-      if (!req.effectiveUserId) {
+      if (!req.userId) {
         res.status(401).json({ error: 'Not authenticated' });
         return;
       }
 
       const { id } = req.params;
-      const disabled = await UserModel.disableMember(parseInt(id), req.effectiveUserId);
+      const disabled = await UserModel.disableMember(parseInt(id), (req.ownerUserId ?? req.userId)!);
 
       if (!disabled) {
         res.status(404).json({ error: 'Member not found' });

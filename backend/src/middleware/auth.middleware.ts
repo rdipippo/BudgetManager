@@ -9,9 +9,6 @@ export interface AuthRequest extends Request {
   // Set when userRole is 'full' | 'partial' | 'advisor'
   ownerUserId?: number;
   allowedAccountIds?: number[]; // Populated for partial access
-  // Effective userId for data queries:
-  //   full/advisor → ownerUserId; partial/standalone → userId
-  effectiveUserId?: number;
 }
 
 export const authMiddleware = async (
@@ -54,16 +51,11 @@ export const authMiddleware = async (
   if (user.owner_user_id) {
     req.ownerUserId = user.owner_user_id;
 
-    if (user.role === 'full' || user.role === 'advisor') {
-      req.effectiveUserId = user.owner_user_id;
-    } else if (user.role === 'partial') {
-      req.effectiveUserId = user.id;
+    if (user.role === 'partial') {
       req.allowedAccountIds = await InvitationModel.getActiveAllowedAccountsForUser(
         user.email, user.owner_user_id
       );
     }
-  } else {
-    req.effectiveUserId = user.id;
   }
 
   next();
@@ -84,7 +76,6 @@ export const optionalAuthMiddleware = async (
       req.userId = payload.userId;
       req.userEmail = payload.email;
       req.userRole = payload.role;
-      req.effectiveUserId = payload.userId;
     }
   }
 

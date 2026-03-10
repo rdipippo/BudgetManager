@@ -40,7 +40,7 @@ export const TransactionController = {
       // For partial access, query the owner's transactions filtered by allowed accounts
       const transactionUserId = req.userRole === 'partial' && req.ownerUserId
         ? req.ownerUserId
-        : req.effectiveUserId!;
+        : (req.ownerUserId ?? req.userId)!;
 
       const partialAccountFilter = req.userRole === 'partial' && req.allowedAccountIds?.length
         ? req.allowedAccountIds
@@ -75,7 +75,7 @@ export const TransactionController = {
 
       const transactionUserId = req.userRole === 'partial' && req.ownerUserId
         ? req.ownerUserId
-        : req.effectiveUserId!;
+        : (req.ownerUserId ?? req.userId)!;
 
       const { id } = req.params;
       const transaction = await TransactionModel.findByIdAndUser(parseInt(id), transactionUserId);
@@ -107,7 +107,7 @@ export const TransactionController = {
         return;
       }
 
-      const userId = req.effectiveUserId!;
+      const userId = (req.ownerUserId ?? req.userId)!;
       const { amount, date, merchantName, description, categoryId, notes } = req.body;
 
       // Validate category if provided
@@ -145,7 +145,7 @@ export const TransactionController = {
         return;
       }
 
-      const userId = req.effectiveUserId!;
+      const userId = (req.ownerUserId ?? req.userId)!;
       const { id } = req.params;
       const { amount, date, merchantName, description, categoryId, notes } = req.body;
 
@@ -193,7 +193,7 @@ export const TransactionController = {
         return;
       }
 
-      const userId = req.effectiveUserId!;
+      const userId = (req.ownerUserId ?? req.userId)!;
       const { id } = req.params;
       const { categoryId } = req.body;
 
@@ -234,7 +234,7 @@ export const TransactionController = {
         return;
       }
 
-      const userId = req.effectiveUserId!;
+      const userId = (req.ownerUserId ?? req.userId)!;
       const { id } = req.params;
 
       const transaction = await TransactionModel.findByIdAndUser(parseInt(id), userId);
@@ -269,7 +269,7 @@ export const TransactionController = {
         return;
       }
 
-      const userId = req.effectiveUserId!;
+      const userId = (req.ownerUserId ?? req.userId)!;
       const { transactionIds, categoryId, notes, date } = req.body;
 
       if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
