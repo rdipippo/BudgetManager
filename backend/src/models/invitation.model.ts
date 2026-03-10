@@ -18,22 +18,6 @@ export interface AccountInvitationWithOwner extends AccountInvitation {
   owner_email: string;
 }
 
-export interface AccountMembership {
-  id: number;
-  owner_user_id: number;
-  member_user_id: number;
-  access_type: 'full' | 'partial' | 'advisor';
-  revoked: boolean;
-  revoked_at: Date | null;
-  created_at: Date;
-}
-
-export interface MembershipWithUser extends AccountMembership {
-  member_email: string;
-  member_first_name: string | null;
-  member_last_name: string | null;
-}
-
 export const InvitationModel = {
   async create(
     ownerUserId: number,
@@ -108,89 +92,5 @@ export const InvitationModel = {
       [invitationId]
     );
     return rows.map((r) => r.plaid_account_id);
-  },
-};
-
-export const MembershipModel = {
-  async create(
-    ownerUserId: number,
-    memberUserId: number,
-    accessType: 'full' | 'partial' | 'advisor'
-  ): Promise<number> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      `INSERT INTO account_memberships (owner_user_id, member_user_id, access_type)
-       VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE access_type = VALUES(access_type), revoked = FALSE, revoked_at = NULL`,
-      [ownerUserId, memberUserId, accessType]
-    );
-    if (result.insertId > 0) return result.insertId;
-    // On duplicate key update, fetch the existing id
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT id FROM account_memberships WHERE owner_user_id = ? AND member_user_id = ?',
-      [ownerUserId, memberUserId]
-    );
-    return rows[0]?.id ?? 0;
-  },
-
-  async findById(id: number): Promise<AccountMembership | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM account_memberships WHERE id = ? AND revoked = FALSE',
-      [id]
-    );
-    return rows.length > 0 ? (rows[0] as AccountMembership) : null;
-  },
-
-  async findActiveByMember(memberUserId: number): Promise<AccountMembership | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM account_memberships WHERE member_user_id = ? AND revoked = FALSE LIMIT 1',
-      [memberUserId]
-    );
-    return rows.length > 0 ? (rows[0] as AccountMembership) : null;
-  },
-
-  async findByOwner(ownerUserId: number): Promise<MembershipWithUser[]> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT am.*, u.email AS member_email, u.first_name AS member_first_name, u.last_name AS member_last_name
-       FROM account_memberships am
-       JOIN users u ON am.member_user_id = u.id
-       WHERE am.owner_user_id = ? AND am.revoked = FALSE
-       ORDER BY am.created_at DESC`,
-      [ownerUserId]
-    );
-    return rows as MembershipWithUser[];
-  },
-
-  async revoke(id: number, ownerUserId: number): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      `UPDATE account_memberships SET revoked = TRUE, revoked_at = NOW()
-       WHERE id = ? AND owner_user_id = ?`,
-      [id, ownerUserId]
-    );
-    return result.affectedRows > 0;
-  },
-
-  async addAllowedAccount(membershipId: number, plaidAccountId: number): Promise<void> {
-    await pool.execute(
-      'INSERT IGNORE INTO membership_allowed_accounts (membership_id, plaid_account_id) VALUES (?, ?)',
-      [membershipId, plaidAccountId]
-    );
-  },
-
-  async getAllowedAccountIds(membershipId: number): Promise<number[]> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT plaid_account_id FROM membership_allowed_accounts WHERE membership_id = ?',
-      [membershipId]
-    );
-    return rows.map((r) => r.plaid_account_id);
-  },
-
-  async existsByOwnerAndEmail(ownerUserId: number, email: string): Promise<boolean> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT 1 FROM account_memberships am
-       JOIN users u ON am.member_user_id = u.id
-       WHERE am.owner_user_id = ? AND u.email = ? AND am.revoked = FALSE`,
-      [ownerUserId, email.toLowerCase()]
-    );
-    return rows.length > 0;
   },
 };

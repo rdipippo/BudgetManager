@@ -9,6 +9,7 @@ export interface User {
   last_name: string | null;
   email_verified: boolean;
   role: string;
+  owner_user_id: number | null;
   enabled: boolean;
   created_at: Date;
   updated_at: Date;
@@ -20,6 +21,7 @@ export interface CreateUserData {
   first_name?: string;
   last_name?: string;
   role?: string;
+  owner_user_id?: number;
 }
 
 export interface UserPublic {
@@ -28,6 +30,17 @@ export interface UserPublic {
   first_name: string | null;
   last_name: string | null;
   email_verified: boolean;
+  role: string;
+  owner_user_id: number | null;
+  enabled: boolean;
+  created_at: Date;
+}
+
+export interface MemberWithUser {
+  id: number;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
   role: string;
   enabled: boolean;
   created_at: Date;
@@ -52,14 +65,15 @@ export const UserModel = {
 
   async create(data: CreateUserData): Promise<number> {
     const [result] = await pool.execute<ResultSetHeader>(
-      `INSERT INTO users (email, password_hash, first_name, last_name, role)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO users (email, password_hash, first_name, last_name, role, owner_user_id)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         data.email.toLowerCase(),
         data.password_hash,
         data.first_name || null,
         data.last_name || null,
         data.role || 'user',
+        data.owner_user_id || null,
       ]
     );
     return result.insertId;
@@ -97,6 +111,7 @@ export const UserModel = {
       last_name: user.last_name,
       email_verified: user.email_verified,
       role: user.role,
+      owner_user_id: user.owner_user_id,
       enabled: user.enabled,
       created_at: user.created_at,
     };
@@ -123,5 +138,52 @@ export const UserModel = {
       [role, userId]
     );
     return result.affectedRows > 0;
+  },
+
+  // Find enabled members of an owner's account
+  async findMembersByOwner(ownerUserId: number): Promise<MemberWithUser[]> {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT id, email, first_name, last_name, role, enabled, created_at
+       FROM users
+       WHERE owner_user_id = ? AND enabled = TRUE
+       ORDER BY created_at DESC`,
+      [ownerUserId]
+    );
+    return rows as MemberWithUser[];
+  },
+
+  // Check if a user with the given email is already an active member of the owner's account
+  async isMemberByEmail(ownerUserId: number, email: string): Promise<boolean> {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT 1 FROM users WHERE owner_user_id = ? AND email = ? AND enabled = TRUE',
+      [ownerUserId, email.toLowerCase()]
+    );
+    return rows.length > 0;
+  },
+
+  // Disable a member (revoke access). Verifies owner to prevent unauthorized revocation.
+  async disableMember(memberId: number, ownerUserId: number): Promise<boolean> {
+    const [result] = await pool.execute<ResultSetHeader>(
+      'UPDATE users SET enabled = FALSE WHERE id = ? AND owner_user_id = ?',
+      [memberId, ownerUserId]
+    );
+    return result.affectedRows > 0;
+  },
+};
+
+export const UserAllowedAccountsModel = {
+  async add(userId: number, plaidAccountId: number): Promise<void> {
+    await pool.execute(
+      'INSERT IGNORE INTO user_allowed_accounts (user_id, plaid_account_id) VALUES (?, ?)',
+      [userId, plaidAccountId]
+    );
+  },
+
+  async getForUser(userId: number): Promise<number[]> {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT plaid_account_id FROM user_allowed_accounts WHERE user_id = ?',
+      [userId]
+    );
+    return rows.map((r) => r.plaid_account_id);
   },
 };

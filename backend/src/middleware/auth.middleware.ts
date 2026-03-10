@@ -1,18 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import { TokenService } from '../services';
-import { UserModel, MembershipModel } from '../models';
+import { UserModel, UserAllowedAccountsModel } from '../models';
 
 export interface AuthRequest extends Request {
   userId?: number;
   userEmail?: string;
   userRole?: string;
-  // Membership context fields
-  primaryUserId?: number;       // Owner's userId for full/advisor data access
-  accessType?: 'full' | 'partial' | 'advisor';
-  membershipId?: number;
-  partialOwnerUserId?: number;  // Owner's userId for partial-access transaction queries
-  allowedAccountIds?: number[]; // Allowed plaid_account_ids for partial access
-  // Effective userId for data queries (= primaryUserId for full/advisor, own userId otherwise)
+  // Set when userRole is 'full' | 'partial' | 'advisor'
+  ownerUserId?: number;
+  allowedAccountIds?: number[]; // Populated for partial access
+  // Effective userId for data queries:
+  //   full/advisor → ownerUserId; partial/standalone → userId
   effectiveUserId?: number;
 }
 
@@ -52,20 +50,16 @@ export const authMiddleware = async (
   req.userEmail = payload.email;
   req.userRole = payload.role;
 
-  // Apply membership context from JWT
-  if (payload.accessType && payload.membershipId) {
-    req.accessType = payload.accessType;
-    req.membershipId = payload.membershipId;
+  // Apply membership context from JWT for invited members
+  if (payload.ownerUserId) {
+    req.ownerUserId = payload.ownerUserId;
 
-    if (payload.accessType === 'full' || payload.accessType === 'advisor') {
-      req.primaryUserId = payload.primaryUserId;
-      req.effectiveUserId = payload.primaryUserId ?? payload.userId;
-    } else if (payload.accessType === 'partial') {
-      req.partialOwnerUserId = payload.partialOwnerUserId;
-      req.effectiveUserId = payload.userId; // own data for budgets/categories
-      // Load allowed account IDs for partial access
-      const allowedIds = await MembershipModel.getAllowedAccountIds(payload.membershipId);
-      req.allowedAccountIds = allowedIds;
+    if (payload.role === 'full' || payload.role === 'advisor') {
+      req.effectiveUserId = payload.ownerUserId;
+    } else if (payload.role === 'partial') {
+      req.effectiveUserId = payload.userId;
+      // Load allowed account IDs for this partial-access user
+      req.allowedAccountIds = await UserAllowedAccountsModel.getForUser(payload.userId);
     }
   } else {
     req.effectiveUserId = payload.userId;
@@ -127,7 +121,7 @@ export const canSendInvitationsMiddleware = (
   res: Response,
   next: NextFunction
 ): void => {
-  if (req.accessType === 'partial' || req.accessType === 'advisor') {
+  if (req.userRole === 'partial' || req.userRole === 'advisor') {
     res.status(403).json({ error: 'You do not have permission to send invitations' });
     return;
   }
@@ -140,7 +134,7 @@ export const canManageAccountsMiddleware = (
   res: Response,
   next: NextFunction
 ): void => {
-  if (req.accessType === 'advisor' || req.accessType === 'partial') {
+  if (req.userRole === 'advisor' || req.userRole === 'partial') {
     res.status(403).json({ error: 'You do not have permission to manage bank accounts' });
     return;
   }
@@ -153,7 +147,7 @@ export const canDeleteTransactionsMiddleware = (
   res: Response,
   next: NextFunction
 ): void => {
-  if (req.accessType === 'advisor') {
+  if (req.userRole === 'advisor') {
     res.status(403).json({ error: 'Advisors cannot delete transactions' });
     return;
   }

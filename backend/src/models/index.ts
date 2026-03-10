@@ -1,5 +1,5 @@
-export { UserModel } from './user.model';
-export type { User, CreateUserData, UserPublic } from './user.model';
+export { UserModel, UserAllowedAccountsModel } from './user.model';
+export type { User, CreateUserData, UserPublic, MemberWithUser } from './user.model';
 
 export {
   EmailVerificationTokenModel,
@@ -35,10 +35,8 @@ export type { UserPreferences, TransactionColumnConfig } from './user-preference
 export { AccountBalanceHistoryModel } from './account-balance-history.model';
 export type { AccountBalanceHistory } from './account-balance-history.model';
 
-export { InvitationModel, MembershipModel } from './invitation.model';
-export type {
-  AccountInvitation,
-  AccountInvitationWithOwner,
-  AccountMembership,
-  MembershipWithUser,
-} from './invitation.model';
+export { ListModel, ListItemModel } from './list.model';
+export type { List, ListWithCounts, ListItem, CreateListData, UpdateListData, CreateListItemData, UpdateListItemData } from './list.model';
+
+export { InvitationModel } from './invitation.model';
+export type { AccountInvitation, AccountInvitationWithOwner } from './invitation.model';

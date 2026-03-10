@@ -38,11 +38,11 @@ export const TransactionController = {
       };
 
       // For partial access, query the owner's transactions filtered by allowed accounts
-      const transactionUserId = req.accessType === 'partial' && req.partialOwnerUserId
-        ? req.partialOwnerUserId
+      const transactionUserId = req.userRole === 'partial' && req.ownerUserId
+        ? req.ownerUserId
         : req.effectiveUserId!;
 
-      const partialAccountFilter = req.accessType === 'partial' && req.allowedAccountIds?.length
+      const partialAccountFilter = req.userRole === 'partial' && req.allowedAccountIds?.length
         ? req.allowedAccountIds
         : undefined;
 
@@ -73,8 +73,8 @@ export const TransactionController = {
         return;
       }
 
-      const transactionUserId = req.accessType === 'partial' && req.partialOwnerUserId
-        ? req.partialOwnerUserId
+      const transactionUserId = req.userRole === 'partial' && req.ownerUserId
+        ? req.ownerUserId
         : req.effectiveUserId!;
 
       const { id } = req.params;
@@ -86,7 +86,7 @@ export const TransactionController = {
       }
 
       // For partial access, verify the transaction belongs to an allowed account
-      if (req.accessType === 'partial' && req.allowedAccountIds?.length) {
+      if (req.userRole === 'partial' && req.allowedAccountIds?.length) {
         if (transaction.plaid_account_id && !req.allowedAccountIds.includes(transaction.plaid_account_id)) {
           res.status(404).json({ error: 'Transaction not found' });
           return;

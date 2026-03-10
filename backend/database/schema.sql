@@ -9,6 +9,10 @@ CREATE DATABASE IF NOT EXISTS budget_manager
 USE budget_manager;
 
 -- Users table
+-- role: 'user' | 'admin' | 'super_admin' for standalone accounts;
+--       'full' | 'partial' | 'advisor' for invited members
+-- owner_user_id: NULL for standalone/owner accounts; set to owner's id for invited members
+-- enabled: FALSE to revoke a member's access without deleting the account
 CREATE TABLE IF NOT EXISTS users (
   id INT PRIMARY KEY AUTO_INCREMENT,
   email VARCHAR(255) UNIQUE NOT NULL,
@@ -17,12 +21,15 @@ CREATE TABLE IF NOT EXISTS users (
   last_name VARCHAR(100),
   email_verified BOOLEAN DEFAULT FALSE,
   role VARCHAR(20) DEFAULT 'user',
+  owner_user_id INT NULL,
   enabled BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_email (email),
   INDEX idx_created_at (created_at),
-  INDEX idx_role (role)
+  INDEX idx_role (role),
+  INDEX idx_owner_user_id (owner_user_id),
+  FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- Email verification tokens

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware';
-import { InvitationModel, MembershipModel, UserModel, CategoryModel } from '../models';
+import { InvitationModel, UserModel, UserAllowedAccountsModel, CategoryModel } from '../models';
 import { TokenService, EmailService, PasswordService } from '../services';
 
 const INVITATION_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -17,11 +17,9 @@ export const InvitationController = {
       const { email, accessType, allowedAccountIds } = req.body;
       const inviteeEmail = email.toLowerCase();
 
-      // The invitations are always sent on behalf of the account owner
-      // For full-access members, effectiveUserId is the owner's ID
+      // Invitations are always sent on behalf of the account owner
       const ownerUserId = req.effectiveUserId;
 
-      // Cannot invite yourself
       const ownerUser = await UserModel.findById(ownerUserId);
       if (!ownerUser) {
         res.status(404).json({ error: 'Owner account not found' });
@@ -33,20 +31,18 @@ export const InvitationController = {
         return;
       }
 
-      // Check if the invitee is already a member of this account
-      const alreadyMember = await MembershipModel.existsByOwnerAndEmail(ownerUserId, inviteeEmail);
+      // Check if already an active member of this account
+      const alreadyMember = await UserModel.isMemberByEmail(ownerUserId, inviteeEmail);
       if (alreadyMember) {
         res.status(409).json({ error: 'This person is already a member of your account' });
         return;
       }
 
-      // For partial access, allowedAccountIds is required
       if (accessType === 'partial' && (!allowedAccountIds || allowedAccountIds.length === 0)) {
         res.status(400).json({ error: 'At least one account must be selected for partial access' });
         return;
       }
 
-      // Generate invitation token
       const { token, tokenHash } = await TokenService.generateInvitationToken();
       const expiresAt = new Date(Date.now() + INVITATION_EXPIRY_MS);
 
@@ -58,14 +54,12 @@ export const InvitationController = {
         expiresAt
       );
 
-      // Save allowed accounts for partial access
       if (accessType === 'partial' && allowedAccountIds?.length > 0) {
         for (const accountId of allowedAccountIds) {
           await InvitationModel.addAllowedAccount(invitationId, parseInt(accountId));
         }
       }
 
-      // Send invitation email
       const ownerName = ownerUser.first_name
         ? `${ownerUser.first_name}${ownerUser.last_name ? ' ' + ownerUser.last_name : ''}`
         : ownerUser.email;
@@ -88,7 +82,6 @@ export const InvitationController = {
       }
 
       const invitations = await InvitationModel.findByOwner(req.effectiveUserId);
-
       res.json({ invitations });
     } catch (error) {
       console.error('Get invitations error:', error);
@@ -127,8 +120,7 @@ export const InvitationController = {
         return;
       }
 
-      const members = await MembershipModel.findByOwner(req.effectiveUserId);
-
+      const members = await UserModel.findMembersByOwner(req.effectiveUserId);
       res.json({ members });
     } catch (error) {
       console.error('Get members error:', error);
@@ -136,7 +128,7 @@ export const InvitationController = {
     }
   },
 
-  // DELETE /api/invitations/members/:id — remove a member from this account
+  // DELETE /api/invitations/members/:id — disable a member (revoke access)
   async removeMember(req: AuthRequest, res: Response): Promise<void> {
     try {
       if (!req.effectiveUserId) {
@@ -145,9 +137,9 @@ export const InvitationController = {
       }
 
       const { id } = req.params;
-      const revoked = await MembershipModel.revoke(parseInt(id), req.effectiveUserId);
+      const disabled = await UserModel.disableMember(parseInt(id), req.effectiveUserId);
 
-      if (!revoked) {
+      if (!disabled) {
         res.status(404).json({ error: 'Member not found' });
         return;
       }
@@ -226,7 +218,6 @@ export const InvitationController = {
 
       const inviteeEmail = invitation.invitee_email;
 
-      // The invitee must register with the invited email address
       const existingUser = await UserModel.findByEmail(inviteeEmail);
       if (existingUser) {
         res.status(409).json({
@@ -235,47 +226,37 @@ export const InvitationController = {
         return;
       }
 
-      // Create the new user account with email pre-verified (invitation email proves ownership)
+      // Create the new user with role = access_type and owner_user_id set
       const passwordHash = await PasswordService.hash(password);
       const newUserId = await UserModel.create({
         email: inviteeEmail,
         password_hash: passwordHash,
         first_name: firstName,
         last_name: lastName,
+        role: invitation.access_type,
+        owner_user_id: invitation.owner_user_id,
       });
 
-      // Mark email as verified since they received the invitation
+      // Email pre-verified since they received the invitation
       await UserModel.verifyEmail(newUserId);
 
-      // Create default categories for the new user (for partial access where they have their own)
-      await CategoryModel.createDefaultsForUser(newUserId);
+      // Create default categories for partial-access users (they have their own budget view)
+      if (invitation.access_type === 'partial') {
+        await CategoryModel.createDefaultsForUser(newUserId);
+      }
+
+      // Copy allowed accounts from invitation (for partial access)
+      if (invitation.access_type === 'partial') {
+        const allowedAccountIds = await InvitationModel.getAllowedAccounts(invitation.id);
+        for (const accountId of allowedAccountIds) {
+          await UserAllowedAccountsModel.add(newUserId, accountId);
+        }
+      }
 
       // Mark invitation as used
       await InvitationModel.markAsUsed(invitation.id);
 
-      // Create the membership
-      const membershipId = await MembershipModel.create(
-        invitation.owner_user_id,
-        newUserId,
-        invitation.access_type
-      );
-
-      // Copy allowed accounts from invitation to membership (for partial access)
-      if (invitation.access_type === 'partial') {
-        const allowedAccountIds = await InvitationModel.getAllowedAccounts(invitation.id);
-        for (const accountId of allowedAccountIds) {
-          await MembershipModel.addAllowedAccount(membershipId, accountId);
-        }
-      }
-
-      // Build membership context for JWT
-      const membershipContext = buildMembershipContext(
-        invitation.access_type,
-        invitation.owner_user_id,
-        membershipId
-      );
-
-      // Generate token pair with membership context
+      // Generate token pair with ownerUserId embedded for non-partial roles
       const newUser = await UserModel.findById(newUserId);
       if (!newUser) {
         res.status(500).json({ error: 'Failed to create user' });
@@ -286,7 +267,7 @@ export const InvitationController = {
         newUser.id,
         newUser.email,
         newUser.role,
-        membershipContext
+        newUser.owner_user_id ?? undefined
       );
 
       res.status(201).json({
@@ -301,24 +282,3 @@ export const InvitationController = {
     }
   },
 };
-
-function buildMembershipContext(
-  accessType: 'full' | 'partial' | 'advisor',
-  ownerUserId: number,
-  membershipId: number
-) {
-  if (accessType === 'full' || accessType === 'advisor') {
-    return {
-      primaryUserId: ownerUserId,
-      accessType,
-      membershipId,
-    };
-  } else {
-    // partial access
-    return {
-      accessType,
-      membershipId,
-      partialOwnerUserId: ownerUserId,
-    };
-  }
-}

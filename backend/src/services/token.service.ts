@@ -11,18 +11,8 @@ export interface JwtPayload {
   userId: number;
   email: string;
   role: string;
-  // Membership context (set when the user is a member of another account)
-  primaryUserId?: number;       // Owner's userId (for full/advisor access data queries)
-  accessType?: 'full' | 'partial' | 'advisor';
-  membershipId?: number;        // Active membership ID
-  partialOwnerUserId?: number;  // Owner's userId when accessType is 'partial' (for transaction queries)
-}
-
-export interface MembershipContext {
-  primaryUserId?: number;
-  accessType: 'full' | 'partial' | 'advisor';
-  membershipId: number;
-  partialOwnerUserId?: number;
+  // Set when the user is an invited member (role: full | partial | advisor)
+  ownerUserId?: number;
 }
 
 export interface TokenPair {
@@ -79,18 +69,11 @@ export const TokenService = {
     userId: number,
     email: string,
     role: string,
-    membershipContext?: MembershipContext
+    ownerUserId?: number
   ): Promise<TokenPair> {
     const payload: JwtPayload = { userId, email, role };
-    if (membershipContext) {
-      payload.accessType = membershipContext.accessType;
-      payload.membershipId = membershipContext.membershipId;
-      if (membershipContext.primaryUserId) {
-        payload.primaryUserId = membershipContext.primaryUserId;
-      }
-      if (membershipContext.partialOwnerUserId) {
-        payload.partialOwnerUserId = membershipContext.partialOwnerUserId;
-      }
+    if (ownerUserId) {
+      payload.ownerUserId = ownerUserId;
     }
     const accessToken = this.generateAccessToken(payload);
     const refreshToken = await this.generateRefreshToken(userId);
