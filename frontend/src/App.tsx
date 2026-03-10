@@ -224,6 +224,8 @@ const AppRoutes: React.FC = () => {
         path="/reports/account-balances"
         element={
           <ProtectedRoute>
+	    <AccountReportScreen/>
+	  </ProtectedRoute>
         }
       />
       <Route
