@@ -11,7 +11,7 @@ export const BudgetController = {
         return;
       }
 
-      const userId = (req.ownerUserId ?? req.userId)!;
+      const userId = req.userId!;
       const budgets = await BudgetModel.findByUserId(userId);
 
       // Calculate spent amounts for each budget
@@ -53,7 +53,7 @@ export const BudgetController = {
         return;
       }
 
-      const userId = (req.ownerUserId ?? req.userId)!;
+      const userId = req.userId!;
       const { year, month } = req.query;
       const budgets = await BudgetModel.findByUserId(userId);
 
@@ -151,7 +151,7 @@ export const BudgetController = {
         return;
       }
 
-      const userId = (req.ownerUserId ?? req.userId)!;
+      const userId = req.userId!;
       const { id } = req.params;
       const budget = await BudgetModel.findByIdAndUser(parseInt(id), userId);
 
@@ -205,7 +205,7 @@ export const BudgetController = {
         return;
       }
 
-      const userId = (req.ownerUserId ?? req.userId)!;
+      const userId = req.userId!;
       const { categoryId, amount, startDay } = req.body;
 
       // Validate category exists
@@ -244,7 +244,7 @@ export const BudgetController = {
         return;
       }
 
-      const userId = (req.ownerUserId ?? req.userId)!;
+      const userId = req.userId!;
       const { id } = req.params;
       const { amount, startDay, isActive } = req.body;
 
@@ -280,7 +280,7 @@ export const BudgetController = {
         return;
       }
 
-      const userId = (req.ownerUserId ?? req.userId)!;
+      const userId = req.userId!;
       const { id } = req.params;
 
       const deleted = await BudgetModel.delete(parseInt(id), userId);

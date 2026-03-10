@@ -18,7 +18,7 @@ export const InvitationController = {
       const inviteeEmail = email.toLowerCase();
 
       // Invitations are always sent on behalf of the account owner
-      const ownerUserId = (req.ownerUserId ?? req.userId)!;
+      const ownerUserId = req.userId!;
 
       const ownerUser = await UserModel.findById(ownerUserId);
       if (!ownerUser) {
@@ -81,7 +81,7 @@ export const InvitationController = {
         return;
       }
 
-      const invitations = await InvitationModel.findByOwner((req.ownerUserId ?? req.userId)!);
+      const invitations = await InvitationModel.findByOwner(req.userId!);
       res.json({ invitations });
     } catch (error) {
       console.error('Get invitations error:', error);
@@ -98,7 +98,7 @@ export const InvitationController = {
       }
 
       const { id } = req.params;
-      const revoked = await InvitationModel.revoke(parseInt(id), (req.ownerUserId ?? req.userId)!);
+      const revoked = await InvitationModel.revoke(parseInt(id), req.userId!);
 
       if (!revoked) {
         res.status(404).json({ error: 'Invitation not found' });
@@ -120,7 +120,7 @@ export const InvitationController = {
         return;
       }
 
-      const members = await UserModel.findMembersByOwner((req.ownerUserId ?? req.userId)!);
+      const members = await UserModel.findMembersByOwner(req.userId!);
       res.json({ members });
     } catch (error) {
       console.error('Get members error:', error);
@@ -137,7 +137,7 @@ export const InvitationController = {
       }
 
       const { id } = req.params;
-      const disabled = await UserModel.disableMember(parseInt(id), (req.ownerUserId ?? req.userId)!);
+      const disabled = await UserModel.disableMember(parseInt(id), req.userId!);
 
       if (!disabled) {
         res.status(404).json({ error: 'Member not found' });

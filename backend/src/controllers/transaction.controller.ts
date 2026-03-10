@@ -37,18 +37,9 @@ export const TransactionController = {
         sortDirection: sortDirection as 'asc' | 'desc' | undefined,
       };
 
-      // For partial access, query the owner's transactions filtered by allowed accounts
-      const transactionUserId = req.userRole === 'partial' && req.ownerUserId
-        ? req.ownerUserId
-        : (req.ownerUserId ?? req.userId)!;
-
-      const partialAccountFilter = req.userRole === 'partial' && req.allowedAccountIds?.length
-        ? req.allowedAccountIds
-        : undefined;
-
       const [transactions, total] = await Promise.all([
-        TransactionModel.findByUserId(transactionUserId, filters, partialAccountFilter),
-        TransactionModel.countByUserId(transactionUserId, filters, partialAccountFilter),
+        TransactionModel.findByUserId(req.userId!, filters, req.allowedAccountIds),
+        TransactionModel.countByUserId(req.userId!, filters, req.allowedAccountIds),
       ]);
 
       res.json({
@@ -73,12 +64,8 @@ export const TransactionController = {
         return;
       }
 
-      const transactionUserId = req.userRole === 'partial' && req.ownerUserId
-        ? req.ownerUserId
-        : (req.ownerUserId ?? req.userId)!;
-
       const { id } = req.params;
-      const transaction = await TransactionModel.findByIdAndUser(parseInt(id), transactionUserId);
+      const transaction = await TransactionModel.findByIdAndUser(parseInt(id), req.userId!);
 
       if (!transaction) {
         res.status(404).json({ error: 'Transaction not found' });
@@ -107,7 +94,7 @@ export const TransactionController = {
         return;
       }
 
-      const userId = (req.ownerUserId ?? req.userId)!;
+      const userId = req.userId!;
       const { amount, date, merchantName, description, categoryId, notes } = req.body;
 
       // Validate category if provided
@@ -145,7 +132,7 @@ export const TransactionController = {
         return;
       }
 
-      const userId = (req.ownerUserId ?? req.userId)!;
+      const userId = req.userId!;
       const { id } = req.params;
       const { amount, date, merchantName, description, categoryId, notes } = req.body;
 
@@ -193,7 +180,7 @@ export const TransactionController = {
         return;
       }
 
-      const userId = (req.ownerUserId ?? req.userId)!;
+      const userId = req.userId!;
       const { id } = req.params;
       const { categoryId } = req.body;
 
@@ -234,7 +221,7 @@ export const TransactionController = {
         return;
       }
 
-      const userId = (req.ownerUserId ?? req.userId)!;
+      const userId = req.userId!;
       const { id } = req.params;
 
       const transaction = await TransactionModel.findByIdAndUser(parseInt(id), userId);
@@ -269,7 +256,7 @@ export const TransactionController = {
         return;
       }
 
-      const userId = (req.ownerUserId ?? req.userId)!;
+      const userId = req.userId!;
       const { transactionIds, categoryId, notes, date } = req.body;
 
       if (!Array.isArray(transactionIds) || transactionIds.length === 0) {

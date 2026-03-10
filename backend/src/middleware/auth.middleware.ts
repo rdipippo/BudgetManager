@@ -3,12 +3,10 @@ import { TokenService } from '../services';
 import { UserModel, InvitationModel } from '../models';
 
 export interface AuthRequest extends Request {
-  userId?: number;
+  userId?: number;       // Resolved to owner's id for full/partial/advisor members
   userEmail?: string;
   userRole?: string;
-  // Set when userRole is 'full' | 'partial' | 'advisor'
-  ownerUserId?: number;
-  allowedAccountIds?: number[]; // Populated for partial access
+  allowedAccountIds?: number[]; // Populated for partial access only
 }
 
 export const authMiddleware = async (
@@ -43,19 +41,15 @@ export const authMiddleware = async (
     return;
   }
 
-  req.userId = user.id;
+  // For members, resolve userId to the owner's account so controllers need no membership awareness
+  req.userId = user.owner_user_id ?? user.id;
   req.userEmail = user.email;
   req.userRole = user.role;
 
-  // Apply membership context for invited members (role: full | partial | advisor)
-  if (user.owner_user_id) {
-    req.ownerUserId = user.owner_user_id;
-
-    if (user.role === 'partial') {
-      req.allowedAccountIds = await InvitationModel.getActiveAllowedAccountsForUser(
-        user.email, user.owner_user_id
-      );
-    }
+  if (user.role === 'partial') {
+    req.allowedAccountIds = await InvitationModel.getActiveAllowedAccountsForUser(
+      user.email, user.owner_user_id!
+    );
   }
 
   next();
