@@ -77,10 +77,7 @@ export const AuthController = {
         return;
       }
 
-      // Generate tokens (include ownerUserId in JWT for invited members)
-      const tokens = await TokenService.generateTokenPair(
-        user.id, user.email, user.role, user.owner_user_id ?? undefined
-      );
+      const tokens = await TokenService.generateTokenPair(user.id, user.email, user.role);
 
       // Set refresh token in HTTP-only cookie for web clients
       const cookieMaxAge = rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
@@ -155,9 +152,7 @@ export const AuthController = {
       // Revoke old refresh token and generate new token pair
       await TokenService.revokeRefreshToken(tokenData.tokenId);
 
-      const tokens = await TokenService.generateTokenPair(
-        user.id, user.email, user.role, user.owner_user_id ?? undefined
-      );
+      const tokens = await TokenService.generateTokenPair(user.id, user.email, user.role);
 
       // Update cookie
       res.cookie('refreshToken', tokens.refreshToken, {

@@ -11,8 +11,6 @@ export interface JwtPayload {
   userId: number;
   email: string;
   role: string;
-  // Set when the user is an invited member (role: full | partial | advisor)
-  ownerUserId?: number;
 }
 
 export interface TokenPair {
@@ -65,17 +63,8 @@ export const TokenService = {
     await RefreshTokenModel.revokeAllForUser(userId);
   },
 
-  async generateTokenPair(
-    userId: number,
-    email: string,
-    role: string,
-    ownerUserId?: number
-  ): Promise<TokenPair> {
-    const payload: JwtPayload = { userId, email, role };
-    if (ownerUserId) {
-      payload.ownerUserId = ownerUserId;
-    }
-    const accessToken = this.generateAccessToken(payload);
+  async generateTokenPair(userId: number, email: string, role: string): Promise<TokenPair> {
+    const accessToken = this.generateAccessToken({ userId, email, role });
     const refreshToken = await this.generateRefreshToken(userId);
     return { accessToken, refreshToken };
   },

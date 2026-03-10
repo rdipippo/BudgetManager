@@ -46,25 +46,24 @@ export const authMiddleware = async (
     return;
   }
 
-  req.userId = payload.userId;
-  req.userEmail = payload.email;
-  req.userRole = payload.role;
+  req.userId = user.id;
+  req.userEmail = user.email;
+  req.userRole = user.role;
 
-  // Apply membership context from JWT for invited members
-  if (payload.ownerUserId) {
-    req.ownerUserId = payload.ownerUserId;
+  // Apply membership context for invited members (role: full | partial | advisor)
+  if (user.owner_user_id) {
+    req.ownerUserId = user.owner_user_id;
 
-    if (payload.role === 'full' || payload.role === 'advisor') {
-      req.effectiveUserId = payload.ownerUserId;
-    } else if (payload.role === 'partial') {
-      req.effectiveUserId = payload.userId;
-      // Load allowed account IDs from the accepted invitation
+    if (user.role === 'full' || user.role === 'advisor') {
+      req.effectiveUserId = user.owner_user_id;
+    } else if (user.role === 'partial') {
+      req.effectiveUserId = user.id;
       req.allowedAccountIds = await InvitationModel.getActiveAllowedAccountsForUser(
-        payload.email, payload.ownerUserId
+        user.email, user.owner_user_id
       );
     }
   } else {
-    req.effectiveUserId = payload.userId;
+    req.effectiveUserId = user.id;
   }
 
   next();

@@ -260,12 +260,7 @@ export const InvitationController = {
         return;
       }
 
-      const tokens = await TokenService.generateTokenPair(
-        newUser.id,
-        newUser.email,
-        newUser.role,
-        newUser.owner_user_id ?? undefined
-      );
+      const tokens = await TokenService.generateTokenPair(newUser.id, newUser.email, newUser.role);
 
       res.status(201).json({
         message: 'Invitation accepted. Account created successfully.',
