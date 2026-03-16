@@ -110,3 +110,50 @@ export const changePasswordValidation = [
     .withMessage('Password must contain at least one special character'),
   handleValidationErrors,
 ];
+
+export const sendInvitationValidation = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail(),
+  body('accessType')
+    .isIn(['full', 'partial', 'advisor'])
+    .withMessage('Access type must be full, partial, or advisor'),
+  body('allowedAccountIds')
+    .optional()
+    .isArray()
+    .withMessage('allowedAccountIds must be an array'),
+  body('allowedAccountIds.*')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Each account ID must be a positive integer'),
+  handleValidationErrors,
+];
+
+export const acceptInvitationValidation = [
+  body('token')
+    .notEmpty()
+    .withMessage('Invitation token is required'),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+    .matches(/[A-Z]/)
+    .withMessage('Password must contain at least one uppercase letter')
+    .matches(/[a-z]/)
+    .withMessage('Password must contain at least one lowercase letter')
+    .matches(/[0-9]/)
+    .withMessage('Password must contain at least one number')
+    .matches(/[!@#$%^&*(),.?":{}|<>]/)
+    .withMessage('Password must contain at least one special character'),
+  body('firstName')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('First name must be between 1 and 100 characters'),
+  body('lastName')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Last name must be between 1 and 100 characters'),
+  handleValidationErrors,
+];

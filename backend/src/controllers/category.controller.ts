@@ -10,7 +10,8 @@ export const CategoryController = {
         return;
       }
 
-      const categories = await CategoryModel.findByUserId(req.userId);
+      const userId = req.userId!;
+      const categories = await CategoryModel.findByUserId(userId);
       res.json({ categories });
     } catch (error) {
       console.error('Get categories error:', error);
@@ -25,8 +26,9 @@ export const CategoryController = {
         return;
       }
 
+      const userId = req.userId!;
       const { id } = req.params;
-      const category = await CategoryModel.findByIdAndUser(parseInt(id), req.userId);
+      const category = await CategoryModel.findByIdAndUser(parseInt(id), userId);
 
       if (!category) {
         res.status(404).json({ error: 'Category not found' });
@@ -47,10 +49,11 @@ export const CategoryController = {
         return;
       }
 
+      const userId = req.userId!;
       const { name, color, icon, parentId, isIncome } = req.body;
 
       // Check for duplicate name
-      const existing = await CategoryModel.findByUserIdAndName(req.userId, name, parentId || null);
+      const existing = await CategoryModel.findByUserIdAndName(userId, name, parentId || null);
       if (existing) {
         res.status(409).json({ error: 'A category with this name already exists' });
         return;
@@ -58,7 +61,7 @@ export const CategoryController = {
 
       // Validate parent exists if provided
       if (parentId) {
-        const parent = await CategoryModel.findByIdAndUser(parentId, req.userId);
+        const parent = await CategoryModel.findByIdAndUser(parentId, userId);
         if (!parent) {
           res.status(400).json({ error: 'Parent category not found' });
           return;
@@ -66,7 +69,7 @@ export const CategoryController = {
       }
 
       const categoryId = await CategoryModel.create({
-        user_id: req.userId,
+        user_id: userId,
         parent_id: parentId || null,
         name,
         color,
@@ -89,11 +92,12 @@ export const CategoryController = {
         return;
       }
 
+      const userId = req.userId!;
       const { id } = req.params;
       const { name, color, icon, parentId, sortOrder, isIncome } = req.body;
 
       // Check category exists and belongs to user
-      const category = await CategoryModel.findByIdAndUser(parseInt(id), req.userId);
+      const category = await CategoryModel.findByIdAndUser(parseInt(id), userId);
       if (!category) {
         res.status(404).json({ error: 'Category not found' });
         return;
@@ -102,7 +106,7 @@ export const CategoryController = {
       // Check for duplicate name if name is being changed
       if (name && name !== category.name) {
         const existing = await CategoryModel.findByUserIdAndName(
-          req.userId,
+          userId,
           name,
           parentId !== undefined ? parentId : category.parent_id
         );
@@ -114,7 +118,7 @@ export const CategoryController = {
 
       // Validate parent exists if provided
       if (parentId) {
-        const parent = await CategoryModel.findByIdAndUser(parentId, req.userId);
+        const parent = await CategoryModel.findByIdAndUser(parentId, userId);
         if (!parent) {
           res.status(400).json({ error: 'Parent category not found' });
           return;
@@ -126,7 +130,7 @@ export const CategoryController = {
         }
       }
 
-      const updated = await CategoryModel.update(parseInt(id), req.userId, {
+      const updated = await CategoryModel.update(parseInt(id), userId, {
         name,
         color,
         icon,
@@ -155,16 +159,17 @@ export const CategoryController = {
         return;
       }
 
+      const userId = req.userId!;
       const { id } = req.params;
 
       // Check category exists and belongs to user
-      const category = await CategoryModel.findByIdAndUser(parseInt(id), req.userId);
+      const category = await CategoryModel.findByIdAndUser(parseInt(id), userId);
       if (!category) {
         res.status(404).json({ error: 'Category not found' });
         return;
       }
 
-      const deleted = await CategoryModel.delete(parseInt(id), req.userId);
+      const deleted = await CategoryModel.delete(parseInt(id), userId);
 
       if (!deleted) {
         res.status(404).json({ error: 'Category not found or cannot be deleted' });

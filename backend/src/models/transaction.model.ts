@@ -82,7 +82,8 @@ export const TransactionModel = {
 
   async findByUserId(
     userId: number,
-    filters: TransactionFilters = {}
+    filters: TransactionFilters = {},
+    allowedAccountIds?: number[]
   ): Promise<TransactionWithCategory[]> {
     const sortFieldMap: Record<string, string> = {
       name: 't.merchant_name',
@@ -97,6 +98,11 @@ export const TransactionModel = {
       LEFT JOIN categories c ON t.category_id = c.id
       WHERE t.user_id = ?
     `).addParam(userId);
+
+    // For partial access: restrict to allowed plaid accounts
+    if (allowedAccountIds && allowedAccountIds.length > 0) {
+      qb.whereIn('t.plaid_account_id', allowedAccountIds);
+    }
 
     if (filters.startDate) {
       qb.where('t.date >= ?', filters.startDate);
@@ -134,31 +140,40 @@ export const TransactionModel = {
     return rows as TransactionWithCategory[];
   },
 
-  async countByUserId(userId: number, filters: TransactionFilters = {}): Promise<number> {
-    const qb = new SafeQueryBuilder('SELECT COUNT(*) as count FROM transactions WHERE user_id = ?')
+  async countByUserId(
+    userId: number,
+    filters: TransactionFilters = {},
+    allowedAccountIds?: number[]
+  ): Promise<number> {
+    const qb = new SafeQueryBuilder('SELECT COUNT(*) as count FROM transactions t WHERE t.user_id = ?')
       .addParam(userId);
 
+    // For partial access: restrict to allowed plaid accounts
+    if (allowedAccountIds && allowedAccountIds.length > 0) {
+      qb.whereIn('t.plaid_account_id', allowedAccountIds);
+    }
+
     if (filters.startDate) {
-      qb.where('date >= ?', filters.startDate);
+      qb.where('t.date >= ?', filters.startDate);
     }
     if (filters.endDate) {
-      qb.where('date <= ?', filters.endDate);
+      qb.where('t.date <= ?', filters.endDate);
     }
     if (filters.categoryId !== undefined) {
       if (filters.categoryId === null) {
-        qb.whereRaw('category_id IS NULL');
+        qb.whereRaw('t.category_id IS NULL');
       } else {
-        qb.where('category_id = ?', filters.categoryId);
+        qb.where('t.category_id = ?', filters.categoryId);
       }
     }
     if (filters.uncategorized) {
-      qb.whereRaw('category_id IS NULL');
+      qb.whereRaw('t.category_id IS NULL');
     }
     if (filters.accountId) {
-      qb.where('plaid_account_id = ?', filters.accountId);
+      qb.where('t.plaid_account_id = ?', filters.accountId);
     }
     if (filters.search) {
-      qb.whereLikeAny(['merchant_name', 'description'], filters.search);
+      qb.whereLikeAny(['t.merchant_name', 't.description'], filters.search);
     }
 
     const { query, params } = qb.build();

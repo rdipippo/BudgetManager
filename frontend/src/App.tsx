@@ -21,6 +21,8 @@ import {
   ReportsScreen,
   MonthToMonthScreen,
   AccountReportScreen,
+  InvitationsScreen,
+  AcceptInvitationScreen,
 } from './screens';
 import { Spinner } from './components';
 import './i18n';
@@ -244,6 +246,16 @@ const AppRoutes: React.FC = () => {
           </AdminRoute>
         }
       />
+      <Route
+        path="/invitations"
+        element={
+          <ProtectedRoute>
+            <InvitationsScreen />
+          </ProtectedRoute>
+        }
+      />
+      {/* Accept invitation is a public route - the invitee registers a new account */}
+      <Route path="/accept-invitation" element={<AcceptInvitationScreen />} />
 
       {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -77,7 +77,6 @@ export const AuthController = {
         return;
       }
 
-      // Generate tokens
       const tokens = await TokenService.generateTokenPair(user.id, user.email, user.role);
 
       // Set refresh token in HTTP-only cookie for web clients
@@ -152,6 +151,7 @@ export const AuthController = {
 
       // Revoke old refresh token and generate new token pair
       await TokenService.revokeRefreshToken(tokenData.tokenId);
+
       const tokens = await TokenService.generateTokenPair(user.id, user.email, user.role);
 
       // Update cookie
@@ -335,3 +335,4 @@ export const AuthController = {
     }
   },
 };
+

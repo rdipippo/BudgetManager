@@ -11,7 +11,8 @@ export const BudgetController = {
         return;
       }
 
-      const budgets = await BudgetModel.findByUserId(req.userId);
+      const userId = req.userId!;
+      const budgets = await BudgetModel.findByUserId(userId);
 
       // Calculate spent amounts for each budget
       const budgetsWithSpent: BudgetWithSpent[] = await Promise.all(
@@ -19,7 +20,7 @@ export const BudgetController = {
           const budgetAmount = Number(budget.amount) || 0;
           const { startDate, endDate } = BudgetModel.getCurrentPeriodDates(budget.start_day);
           const spent = await TransactionModel.getSpentByCategory(
-            req.userId!,
+            userId,
             budget.category_id,
             startDate,
             endDate
@@ -52,8 +53,9 @@ export const BudgetController = {
         return;
       }
 
+      const userId = req.userId!;
       const { year, month } = req.query;
-      const budgets = await BudgetModel.findByUserId(req.userId);
+      const budgets = await BudgetModel.findByUserId(userId);
 
       // Get the period dates - use specified month/year or current period
       let startDate: string;
@@ -75,7 +77,7 @@ export const BudgetController = {
 
       // Get all spending by category for this period
       const spendingByCategory = await TransactionModel.getSpentByCategoryForPeriod(
-        req.userId,
+        userId,
         startDate,
         endDate
       );
@@ -83,7 +85,7 @@ export const BudgetController = {
 
       // Get income received by category for this period
       const incomeByCategory = await TransactionModel.getIncomeByCategoryForPeriod(
-        req.userId,
+        userId,
         startDate,
         endDate
       );
@@ -149,8 +151,9 @@ export const BudgetController = {
         return;
       }
 
+      const userId = req.userId!;
       const { id } = req.params;
-      const budget = await BudgetModel.findByIdAndUser(parseInt(id), req.userId);
+      const budget = await BudgetModel.findByIdAndUser(parseInt(id), userId);
 
       if (!budget) {
         res.status(404).json({ error: 'Budget not found' });
@@ -160,14 +163,14 @@ export const BudgetController = {
       // Get spent amount
       const { startDate, endDate } = BudgetModel.getCurrentPeriodDates(budget.start_day);
       const spent = await TransactionModel.getSpentByCategory(
-        req.userId,
+        userId,
         budget.category_id,
         startDate,
         endDate
       );
 
       // Get transactions for this category in the current period
-      const transactions = await TransactionModel.findByUserId(req.userId, {
+      const transactions = await TransactionModel.findByUserId(userId, {
         categoryId: budget.category_id,
         startDate,
         endDate,
@@ -202,30 +205,31 @@ export const BudgetController = {
         return;
       }
 
+      const userId = req.userId!;
       const { categoryId, amount, startDay } = req.body;
 
       // Validate category exists
-      const category = await CategoryModel.findByIdAndUser(categoryId, req.userId);
+      const category = await CategoryModel.findByIdAndUser(categoryId, userId);
       if (!category) {
         res.status(400).json({ error: 'Category not found' });
         return;
       }
 
       // Check for existing budget for this category
-      const existing = await BudgetModel.findByUserIdAndCategory(req.userId, categoryId);
+      const existing = await BudgetModel.findByUserIdAndCategory(userId, categoryId);
       if (existing) {
         res.status(409).json({ error: 'A budget already exists for this category' });
         return;
       }
 
       const budgetId = await BudgetModel.create({
-        user_id: req.userId,
+        user_id: userId,
         category_id: categoryId,
         amount,
         start_day: startDay,
       });
 
-      const budget = await BudgetModel.findByIdAndUser(budgetId, req.userId);
+      const budget = await BudgetModel.findByIdAndUser(budgetId, userId);
       res.status(201).json({ budget, message: 'Budget created' });
     } catch (error) {
       console.error('Create budget error:', error);
@@ -240,16 +244,17 @@ export const BudgetController = {
         return;
       }
 
+      const userId = req.userId!;
       const { id } = req.params;
       const { amount, startDay, isActive } = req.body;
 
-      const budget = await BudgetModel.findByIdAndUser(parseInt(id), req.userId);
+      const budget = await BudgetModel.findByIdAndUser(parseInt(id), userId);
       if (!budget) {
         res.status(404).json({ error: 'Budget not found' });
         return;
       }
 
-      const updated = await BudgetModel.update(parseInt(id), req.userId, {
+      const updated = await BudgetModel.update(parseInt(id), userId, {
         amount,
         start_day: startDay,
         is_active: isActive,
@@ -260,7 +265,7 @@ export const BudgetController = {
         return;
       }
 
-      const updatedBudget = await BudgetModel.findByIdAndUser(parseInt(id), req.userId);
+      const updatedBudget = await BudgetModel.findByIdAndUser(parseInt(id), userId);
       res.json({ budget: updatedBudget, message: 'Budget updated' });
     } catch (error) {
       console.error('Update budget error:', error);
@@ -275,9 +280,10 @@ export const BudgetController = {
         return;
       }
 
+      const userId = req.userId!;
       const { id } = req.params;
 
-      const deleted = await BudgetModel.delete(parseInt(id), req.userId);
+      const deleted = await BudgetModel.delete(parseInt(id), userId);
 
       if (!deleted) {
         res.status(404).json({ error: 'Budget not found' });
