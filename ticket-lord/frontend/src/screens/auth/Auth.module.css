@@ -1,0 +1,88 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: linear-gradient(135deg, var(--color-primary-bg) 0%, white 100%);
+}
+
+.card {
+  width: 100%;
+  max-width: 440px;
+  background: white;
+  border-radius: var(--radius-2xl);
+  padding: var(--space-10) var(--space-8);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--color-gray-100);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.brand {
+  font-size: 3rem;
+  text-align: center;
+  margin-bottom: var(--space-2);
+}
+
+.title {
+  font-size: var(--font-size-3xl);
+  font-weight: 800;
+  text-align: center;
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.subtitle {
+  text-align: center;
+  color: var(--color-gray-500);
+  margin: 0;
+}
+
+.form { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.forgotWrap { text-align: right; margin-top: calc(-1 * var(--space-2)); }
+.forgotLink { font-size: var(--font-size-sm); color: var(--color-primary); }
+
+.switchText {
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-600);
+  margin-top: var(--space-2);
+}
+
+.terms {
+  text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-400);
+  margin-top: var(--space-2);
+}
+
+/* Role selector */
+.roleSelect { display: flex; flex-direction: column; gap: var(--space-2); }
+.roleLabel { font-size: var(--font-size-sm); font-weight: 500; color: var(--color-gray-700); }
+.roleOptions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.roleOption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1.5px solid var(--color-gray-300);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: var(--font-size-sm);
+  transition: all var(--transition-fast);
+}
+.roleOption:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.roleSelected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+}
