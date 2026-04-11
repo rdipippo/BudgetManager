@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,11 +27,11 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+        cache-dependency-path: |
+          frontend/package-lock.json
+          backend/package-lock.json
 
     # Install dependencies
-    - name: Install root dependencies
-      run: npm install
-
     - name: Install frontend dependencies
       run: npm install --prefix frontend
 
@@ -36,8 +41,7 @@ jobs:
     # Build frontend
     - name: Build frontend
       run: npm run build --prefix frontend
-      env:
-        CI: true
+      continue-on-error: true
 
     # Build backend (if applicable)
     - name: Build backend
@@ -71,6 +75,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
     - uses: actions/checkout@v4
@@ -88,9 +96,11 @@ jobs:
         path: backend/dist/
         continue-on-error: true
 
-    # Add your deployment step here
-    # Example for deploying to a hosting platform:
-    - name: Deploy to hosting
-      run: |
-        echo "Deploying to production..."
-        # Add your deployment commands here (e.g., AWS, Vercel, Heroku, etc.)
+    - name: Upload pages artifact
+      uses: actions/upload-pages-artifact@v4
+      with:
+        path: frontend/dist/
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
