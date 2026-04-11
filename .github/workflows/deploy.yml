@@ -42,6 +42,11 @@ jobs:
     - name: Build frontend
       run: npm run build --prefix frontend
       continue-on-error: true
+      env:
+        VITE_BASE_PATH: /BudgetManager/
+
+    - name: Copy index.html to 404.html for SPA routing
+      run: cp frontend/dist/index.html frontend/dist/404.html
 
     # Build backend (if applicable)
     - name: Build backend
