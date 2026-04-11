@@ -27,9 +27,6 @@ jobs:
           backend/package-lock.json
 
     # Install dependencies
-    - name: Install root dependencies
-      run: npm install
-
     - name: Install frontend dependencies
       run: npm install --prefix frontend
 
