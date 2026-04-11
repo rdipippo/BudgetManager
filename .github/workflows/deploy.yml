@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x]
+        node-version: [24.x]
 
     steps:
     - uses: actions/checkout@v3
@@ -25,13 +25,13 @@ jobs:
 
     # Install dependencies
     - name: Install root dependencies
-      run: npm ci
+      run: npm install
 
     - name: Install frontend dependencies
-      run: npm ci --prefix frontend
+      run: npm install --prefix frontend
 
     - name: Install backend dependencies
-      run: npm ci --prefix backend
+      run: npm install --prefix backend
 
     # Build frontend
     - name: Build frontend
@@ -55,7 +55,7 @@ jobs:
 
     # Upload build artifacts
     - name: Upload frontend build
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: frontend-build
         path: frontend/build/
