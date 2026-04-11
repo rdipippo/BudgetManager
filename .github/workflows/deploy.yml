@@ -1,0 +1,96 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [24.x]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    # Install dependencies
+    - name: Install root dependencies
+      run: npm install
+
+    - name: Install frontend dependencies
+      run: npm install --prefix frontend
+
+    - name: Install backend dependencies
+      run: npm install --prefix backend
+
+    # Build frontend
+    - name: Build frontend
+      run: npm run build --prefix frontend
+      env:
+        CI: true
+
+    # Build backend (if applicable)
+    - name: Build backend
+      run: npm run build --prefix backend
+      continue-on-error: true
+
+    # Run tests
+    - name: Test frontend
+      run: npm test --prefix frontend -- --passWithNoTests
+      continue-on-error: true
+
+    - name: Test backend
+      run: npm test --prefix backend
+      continue-on-error: true
+
+    # Upload build artifacts
+    - name: Upload frontend build
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend/build/
+
+    - name: Upload backend dist
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-build
+        path: backend/dist/
+        continue-on-error: true
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download frontend build
+      uses: actions/download-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend/build/
+
+    - name: Download backend build
+      uses: actions/download-artifact@v4
+      with:
+        name: backend-build
+        path: backend/dist/
+        continue-on-error: true
+
+    # Add your deployment step here
+    # Example for deploying to a hosting platform:
+    - name: Deploy to hosting
+      run: |
+        echo "Deploying to production..."
+        # Add your deployment commands here (e.g., AWS, Vercel, Heroku, etc.)
