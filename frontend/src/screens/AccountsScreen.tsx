@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { usePlaidLink } from 'react-plaid-link';
 import { plaidService } from '../services';
 import { PlaidItem } from '../types/budget.types';
-import { Spinner, Alert, Button, EmptyState, AmountDisplay, SideMenu } from '../components';
+import { Spinner, Alert, Button, EmptyState, AmountDisplay, SideMenu, Modal, NoteThread } from '../components';
 
 export const AccountsScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -15,6 +15,8 @@ export const AccountsScreen: React.FC = () => {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [linkTokenLoading, setLinkTokenLoading] = useState(true);
   const [syncing, setSyncing] = useState<number | null>(null);
+  const [notesAccountId, setNotesAccountId] = useState<number | null>(null);
+  const [notesAccountName, setNotesAccountName] = useState('');
 
   const loadItems = async () => {
     try {
@@ -189,6 +191,15 @@ export const AccountsScreen: React.FC = () => {
                           <AmountDisplay amount={account.currentBalance} size="sm" />
                         )}
                         <button
+                          className="notes-icon-btn"
+                          onClick={() => { setNotesAccountId(account.id); setNotesAccountName(account.name); }}
+                          title={t('notes.openNotes', 'Notes')}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                          </svg>
+                        </button>
+                        <button
                           className="visibility-toggle"
                           onClick={() => handleToggleVisibility(account.id, account.isHidden)}
                           title={account.isHidden ? t('accounts.showAccount', 'Show account') : t('accounts.hideAccount', 'Hide account')}
@@ -231,6 +242,15 @@ export const AccountsScreen: React.FC = () => {
           </div>
         </>
       )}
+      <Modal
+        isOpen={notesAccountId !== null}
+        onClose={() => setNotesAccountId(null)}
+        title={`${t('notes.notes', 'Notes')} — ${notesAccountName}`}
+      >
+        {notesAccountId !== null && (
+          <NoteThread entityType="plaid_account" entityId={notesAccountId} />
+        )}
+      </Modal>
     </div>
   );
 };

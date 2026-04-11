@@ -9,6 +9,8 @@ import budgetRoutes from './budget.routes';
 import settingsRoutes from './settings.routes';
 import listRoutes from './list.routes';
 import invitationRoutes from './invitation.routes';
+import noteRoutes from './note.routes';
+import testRoutes from './test.routes';
 
 const router = Router();
 
@@ -22,6 +24,12 @@ router.use('/budgets', budgetRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/lists', listRoutes);
 router.use('/invitations', invitationRoutes);
+router.use('/notes', noteRoutes);
+
+// Test-only helpers — never registered in production
+if (process.env.NODE_ENV !== 'production') {
+  router.use('/test', testRoutes);
+}
 
 // Health check endpoint
 router.get('/health', (req, res) => {

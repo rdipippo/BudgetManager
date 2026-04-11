@@ -313,6 +313,27 @@ CREATE TABLE IF NOT EXISTS invitation_allowed_accounts (
   FOREIGN KEY (plaid_account_id) REFERENCES plaid_accounts(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- ─── Notes ───────────────────────────────────────────────────────────────────
+-- Shared notes between account members, attachable to a plaid_account,
+-- category, or monthly budget period.
+CREATE TABLE IF NOT EXISTS notes (
+  id              INT PRIMARY KEY AUTO_INCREMENT,
+  owner_user_id   INT NOT NULL,           -- owner's account (scopes data to all members)
+  author_user_id  INT NOT NULL,           -- the actual logged-in user who wrote it
+  entity_type     ENUM('plaid_account','category','monthly_budget') NOT NULL,
+  entity_id       INT NOT NULL DEFAULT 0, -- plaid_account or category id; 0 for monthly_budget
+  budget_year     SMALLINT NULL,          -- set only for entity_type = 'monthly_budget'
+  budget_month    TINYINT  NULL,          -- 1–12, set only for entity_type = 'monthly_budget'
+  body            TEXT NOT NULL,
+  edited_at       TIMESTAMP NULL,
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (owner_user_id)  REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (author_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_notes_entity  (owner_user_id, entity_type, entity_id),
+  INDEX idx_notes_budget  (owner_user_id, budget_year, budget_month)
+) ENGINE=InnoDB;
+
 -- ─── Maintenance ──────────────────────────────────────────────────────────────
 DELIMITER //
 CREATE PROCEDURE IF NOT EXISTS cleanup_expired_tokens()

@@ -19,3 +19,4 @@ export { AccountsWidget } from './AccountsWidget';
 export { CategoryList } from './CategoryList';
 export { PieChart } from './PieChart';
 export { BarChart } from './BarChart';
+export { NoteThread } from './NoteThread';

@@ -40,3 +40,6 @@ export type { List, ListWithCounts, ListItem, CreateListData, UpdateListData, Cr
 
 export { InvitationModel } from './invitation.model';
 export type { AccountInvitation, AccountInvitationWithOwner } from './invitation.model';
+
+export { NoteModel } from './note.model';
+export type { Note, NoteWithAuthor, CreateNoteData, NoteEntityType } from './note.model';

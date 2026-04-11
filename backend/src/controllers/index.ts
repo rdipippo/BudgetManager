@@ -8,3 +8,4 @@ export { BudgetController } from './budget.controller';
 export { SettingsController } from './settings.controller';
 export { ListController } from './list.controller';
 export { InvitationController } from './invitation.controller';
+export { NoteController } from './note.controller';

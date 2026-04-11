@@ -3,7 +3,8 @@ import { TokenService } from '../services';
 import { UserModel, InvitationModel } from '../models';
 
 export interface AuthRequest extends Request {
-  userId?: number;       // Resolved to owner's id for full/partial/advisor members
+  userId?: number;          // Resolved to owner's id for full/partial/advisor members
+  actingUserId?: number;    // The raw logged-in user's id (before owner resolution)
   userEmail?: string;
   userRole?: string;
   allowedAccountIds?: number[]; // Populated for partial access only
@@ -41,6 +42,8 @@ export const authMiddleware = async (
     return;
   }
 
+  // Track the actual logged-in user before owner resolution (needed to attribute notes, etc.)
+  req.actingUserId = user.id;
   // For members, resolve userId to the owner's account so controllers need no membership awareness
   req.userId = user.owner_user_id ?? user.id;
   req.userEmail = user.email;

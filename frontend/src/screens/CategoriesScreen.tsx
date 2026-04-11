@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { categoryService } from '../services';
 import { Category } from '../types/budget.types';
-import { Spinner, Alert, Button, Input, Modal, SideMenu, CategoryList } from '../components';
+import { Spinner, Alert, Button, Input, Modal, SideMenu, NoteThread } from '../components';
 
 const COLORS = [
   '#EF4444', '#F97316', '#F59E0B', '#84CC16', '#10B981',
@@ -22,6 +22,8 @@ export const CategoriesScreen: React.FC = () => {
   const [formColor, setFormColor] = useState(COLORS[0]);
   const [formIsIncome, setFormIsIncome] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [notesCategoryId, setNotesCategoryId] = useState<number | null>(null);
+  const [notesCategoryName, setNotesCategoryName] = useState('');
 
   useEffect(() => {
     loadCategories();
@@ -113,13 +115,54 @@ export const CategoriesScreen: React.FC = () => {
           <Spinner size="lg" />
         </div>
       ) : (
-        <CategoryList
-          categories={categories}
-          mode="manage"
-          onEdit={openEditModal}
-          onDelete={handleDelete}
-        />
+        <div className="category-list-container">
+          {categories.map((category) => (
+            <div key={category.id} className="category-list-item-with-notes">
+              <div
+                className="category-list-item"
+                style={{ flex: 1 }}
+                role="button"
+                tabIndex={0}
+                onClick={() => openEditModal(category)}
+                onKeyDown={(e) => e.key === 'Enter' && openEditModal(category)}
+              >
+                <div className="category-list-item-left">
+                  <span className="category-list-item-dot" style={{ backgroundColor: category.color }} />
+                  <span className="category-list-item-name">{category.name}</span>
+                </div>
+                <button
+                  className="category-list-item-delete"
+                  onClick={(e) => { e.stopPropagation(); handleDelete(category); }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                </button>
+              </div>
+              <button
+                className="notes-icon-btn"
+                onClick={() => { setNotesCategoryId(category.id); setNotesCategoryName(category.name); }}
+                title={t('notes.openNotes', 'Notes')}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
       )}
+
+      <Modal
+        isOpen={notesCategoryId !== null}
+        onClose={() => setNotesCategoryId(null)}
+        title={`${t('notes.notes', 'Notes')} — ${notesCategoryName}`}
+      >
+        {notesCategoryId !== null && (
+          <NoteThread entityType="category" entityId={notesCategoryId} />
+        )}
+      </Modal>
 
       <Modal
         isOpen={modalOpen}

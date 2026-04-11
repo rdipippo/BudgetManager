@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { budgetService, categoryService } from '../services';
 import { Category, BudgetSummary } from '../types/budget.types';
-import { BudgetCard, BudgetSummaryWidget, Spinner, EmptyState, SideMenu, Alert, Button, Modal, Input } from '../components';
+import { BudgetCard, BudgetSummaryWidget, Spinner, EmptyState, SideMenu, Alert, Button, Modal, Input, NoteThread } from '../components';
 
 export const BudgetsScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +16,7 @@ export const BudgetsScreen: React.FC = () => {
   const [newBudgetCategoryId, setNewBudgetCategoryId] = useState<number | ''>('');
   const [newBudgetAmount, setNewBudgetAmount] = useState('');
   const [creating, setCreating] = useState(false);
+  const [notesModalOpen, setNotesModalOpen] = useState(false);
 
   // Month navigation state
   const now = new Date();
@@ -139,11 +140,23 @@ export const BudgetsScreen: React.FC = () => {
             </button>
           )}
         </div>
-        <button className="period-nav-btn" onClick={goToNextMonth} disabled={isCurrentMonth}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            className="notes-trigger-btn"
+            onClick={() => setNotesModalOpen(true)}
+            title={t('notes.openNotes', 'Notes')}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            {t('notes.notes', 'Notes')}
+          </button>
+          <button className="period-nav-btn" onClick={goToNextMonth} disabled={isCurrentMonth}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -243,6 +256,19 @@ export const BudgetsScreen: React.FC = () => {
             />
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={notesModalOpen}
+        onClose={() => setNotesModalOpen(false)}
+        title={`${t('notes.notes', 'Notes')} — ${getMonthName(selectedMonth)} ${selectedYear}`}
+      >
+        <NoteThread
+          entityType="monthly_budget"
+          entityId={0}
+          year={selectedYear}
+          month={selectedMonth}
+        />
       </Modal>
 
       <SideMenu />
