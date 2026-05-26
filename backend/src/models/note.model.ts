@@ -1,5 +1,4 @@
 import pool from '../config/database';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export type NoteEntityType = 'plaid_account' | 'category' | 'monthly_budget';
 
@@ -42,41 +41,41 @@ export const NoteModel = {
     budgetMonth?: number
   ): Promise<NoteWithAuthor[]> {
     if (entityType === 'monthly_budget') {
-      const [rows] = await pool.execute<RowDataPacket[]>(
+      const result = await pool.query(
         `SELECT n.*, u.first_name AS author_first_name, u.last_name AS author_last_name, u.email AS author_email
          FROM notes n
          JOIN users u ON u.id = n.author_user_id
-         WHERE n.owner_user_id = ? AND n.entity_type = 'monthly_budget'
-           AND n.budget_year = ? AND n.budget_month = ?
+         WHERE n.owner_user_id = $1 AND n.entity_type = 'monthly_budget'
+           AND n.budget_year = $2 AND n.budget_month = $3
          ORDER BY n.created_at ASC`,
         [ownerUserId, budgetYear as number, budgetMonth as number]
       );
-      return rows as NoteWithAuthor[];
+      return result.rows as NoteWithAuthor[];
     }
 
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const result = await pool.query(
       `SELECT n.*, u.first_name AS author_first_name, u.last_name AS author_last_name, u.email AS author_email
        FROM notes n
        JOIN users u ON u.id = n.author_user_id
-       WHERE n.owner_user_id = ? AND n.entity_type = ? AND n.entity_id = ?
+       WHERE n.owner_user_id = $1 AND n.entity_type = $2 AND n.entity_id = $3
        ORDER BY n.created_at ASC`,
       [ownerUserId, entityType, entityId]
     );
-    return rows as NoteWithAuthor[];
+    return result.rows as NoteWithAuthor[];
   },
 
   async findById(id: number): Promise<Note | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM notes WHERE id = ?',
+    const result = await pool.query(
+      'SELECT * FROM notes WHERE id = $1',
       [id]
     );
-    return rows.length > 0 ? (rows[0] as Note) : null;
+    return result.rows.length > 0 ? (result.rows[0] as Note) : null;
   },
 
   async create(data: CreateNoteData): Promise<number> {
-    const [result] = await pool.execute<ResultSetHeader>(
+    const result = await pool.query(
       `INSERT INTO notes (owner_user_id, author_user_id, entity_type, entity_id, budget_year, budget_month, body)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
       [
         data.owner_user_id,
         data.author_user_id,
@@ -87,7 +86,7 @@ export const NoteModel = {
         data.body,
       ]
     );
-    return result.insertId;
+    return result.rows[0].id;
   },
 
   async update(
@@ -96,31 +95,31 @@ export const NoteModel = {
     authorUserId: number,
     body: string
   ): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      `UPDATE notes SET body = ?, edited_at = NOW()
-       WHERE id = ? AND owner_user_id = ? AND author_user_id = ?`,
+    const result = await pool.query(
+      `UPDATE notes SET body = $1, edited_at = NOW()
+       WHERE id = $2 AND owner_user_id = $3 AND author_user_id = $4`,
       [body, id, ownerUserId, authorUserId]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async delete(id: number, ownerUserId: number): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'DELETE FROM notes WHERE id = ? AND owner_user_id = ?',
+    const result = await pool.query(
+      'DELETE FROM notes WHERE id = $1 AND owner_user_id = $2',
       [id, ownerUserId]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async findByIdWithAuthor(id: number): Promise<NoteWithAuthor | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const result = await pool.query(
       `SELECT n.*, u.first_name AS author_first_name, u.last_name AS author_last_name, u.email AS author_email
        FROM notes n
        JOIN users u ON u.id = n.author_user_id
-       WHERE n.id = ?`,
+       WHERE n.id = $1`,
       [id]
     );
-    return rows.length > 0 ? (rows[0] as NoteWithAuthor) : null;
+    return result.rows.length > 0 ? (result.rows[0] as NoteWithAuthor) : null;
   },
 
   async countByEntity(
@@ -131,20 +130,20 @@ export const NoteModel = {
     budgetMonth?: number
   ): Promise<number> {
     if (entityType === 'monthly_budget') {
-      const [rows] = await pool.execute<RowDataPacket[]>(
+      const result = await pool.query(
         `SELECT COUNT(*) AS count FROM notes
-         WHERE owner_user_id = ? AND entity_type = 'monthly_budget'
-           AND budget_year = ? AND budget_month = ?`,
+         WHERE owner_user_id = $1 AND entity_type = 'monthly_budget'
+           AND budget_year = $2 AND budget_month = $3`,
         [ownerUserId, budgetYear as number, budgetMonth as number]
       );
-      return (rows[0] as { count: number }).count;
+      return parseInt(result.rows[0].count, 10);
     }
 
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const result = await pool.query(
       `SELECT COUNT(*) AS count FROM notes
-       WHERE owner_user_id = ? AND entity_type = ? AND entity_id = ?`,
+       WHERE owner_user_id = $1 AND entity_type = $2 AND entity_id = $3`,
       [ownerUserId, entityType, entityId]
     );
-    return (rows[0] as { count: number }).count;
+    return parseInt(result.rows[0].count, 10);
   },
 };

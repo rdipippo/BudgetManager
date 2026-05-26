@@ -188,7 +188,16 @@ export const AccountsScreen: React.FC = () => {
                       </div>
                       <div className="sub-account-actions">
                         {account.currentBalance !== null && (
-                          <AmountDisplay amount={account.currentBalance} size="sm" />
+                          <div className="sub-account-balances">
+                            <AmountDisplay amount={account.currentBalance} size="sm" />
+                            {account.availableBalance !== null &&
+                              account.availableBalance !== account.currentBalance && (
+                                <span className="sub-account-available">
+                                  {t('accounts.available', 'Avail')}:{' '}
+                                  <AmountDisplay amount={account.availableBalance} size="sm" />
+                                </span>
+                              )}
+                          </div>
                         )}
                         <button
                           className="notes-icon-btn"

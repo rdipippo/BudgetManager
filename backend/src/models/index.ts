@@ -43,3 +43,14 @@ export type { AccountInvitation, AccountInvitationWithOwner } from './invitation
 
 export { NoteModel } from './note.model';
 export type { Note, NoteWithAuthor, CreateNoteData, NoteEntityType } from './note.model';
+
+export { GoalModel } from './goal.model';
+export type {
+  Goal,
+  GoalWithDetails,
+  GoalProgressPoint,
+  GoalType,
+  ReductionType,
+  CreateGoalData,
+  UpdateGoalData,
+} from './goal.model';

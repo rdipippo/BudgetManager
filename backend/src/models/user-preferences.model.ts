@@ -1,5 +1,4 @@
 import pool from '../config/database';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export interface UserPreferences {
   id: number;
@@ -23,11 +22,11 @@ const DEFAULT_SORT_DIRECTION = 'desc';
 
 export const UserPreferencesModel = {
   async findByUserId(userId: number): Promise<UserPreferences | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM user_preferences WHERE user_id = ?',
+    const result = await pool.query(
+      'SELECT * FROM user_preferences WHERE user_id = $1',
       [userId]
     );
-    return rows.length > 0 ? (rows[0] as UserPreferences) : null;
+    return result.rows.length > 0 ? (result.rows[0] as UserPreferences) : null;
   },
 
   async getTransactionConfig(userId: number): Promise<TransactionColumnConfig> {
@@ -56,31 +55,32 @@ export const UserPreferencesModel = {
     if (existing) {
       const updates: string[] = [];
       const values: (string | number)[] = [];
+      let p = 1;
 
       if (config.visibleColumns !== undefined) {
-        updates.push('transaction_columns = ?');
+        updates.push(`transaction_columns = $${p++}`);
         values.push(JSON.stringify(config.visibleColumns));
       }
       if (config.sortField !== undefined) {
-        updates.push('transaction_sort_field = ?');
+        updates.push(`transaction_sort_field = $${p++}`);
         values.push(config.sortField);
       }
       if (config.sortDirection !== undefined) {
-        updates.push('transaction_sort_direction = ?');
+        updates.push(`transaction_sort_direction = $${p++}`);
         values.push(config.sortDirection);
       }
 
       if (updates.length > 0) {
         values.push(userId);
-        await pool.execute(
-          `UPDATE user_preferences SET ${updates.join(', ')} WHERE user_id = ?`,
+        await pool.query(
+          `UPDATE user_preferences SET ${updates.join(', ')} WHERE user_id = $${p}`,
           values
         );
       }
     } else {
-      await pool.execute<ResultSetHeader>(
+      await pool.query(
         `INSERT INTO user_preferences (user_id, transaction_columns, transaction_sort_field, transaction_sort_direction)
-         VALUES (?, ?, ?, ?)`,
+         VALUES ($1, $2, $3, $4)`,
         [
           userId,
           JSON.stringify(config.visibleColumns || DEFAULT_COLUMNS),

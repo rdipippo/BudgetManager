@@ -210,9 +210,11 @@ export class SafeQueryBuilder {
    * Get the built query and parameters
    */
   build(): { query: string; params: QueryParam[] } {
+    let paramIndex = 0;
+    const finalQuery = this.query.replace(/\?/g, () => `$${++paramIndex}`);
     return {
-      query: this.query,
-      params: [...this.params]
+      query: finalQuery,
+      params: [...this.params],
     };
   }
 

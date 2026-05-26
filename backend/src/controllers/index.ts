@@ -9,3 +9,4 @@ export { SettingsController } from './settings.controller';
 export { ListController } from './list.controller';
 export { InvitationController } from './invitation.controller';
 export { NoteController } from './note.controller';
+export { GoalController } from './goal.controller';

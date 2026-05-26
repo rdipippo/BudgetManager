@@ -14,6 +14,8 @@ import {
   TransactionFormScreen,
   BudgetsScreen,
   BudgetDetailScreen,
+  GoalsScreen,
+  GoalDetailScreen,
   SettingsScreen,
   AccountsScreen,
   CategoriesScreen,
@@ -171,6 +173,22 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <BudgetDetailScreen />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/goals"
+        element={
+          <ProtectedRoute>
+            <GoalsScreen />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/goals/:id"
+        element={
+          <ProtectedRoute>
+            <GoalDetailScreen />
           </ProtectedRoute>
         }
       />

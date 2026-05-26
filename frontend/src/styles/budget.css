@@ -1538,6 +1538,24 @@
   gap: var(--spacing-sm);
 }
 
+.sub-account-balances {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.sub-account-available {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.sub-account-available .amount-display {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
 .visibility-toggle {
   background: none;
   border: none;

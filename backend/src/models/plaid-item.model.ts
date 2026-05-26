@@ -1,5 +1,4 @@
 import pool from '../config/database';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export interface PlaidItem {
   id: number;
@@ -28,41 +27,41 @@ export interface CreatePlaidItemData {
 
 export const PlaidItemModel = {
   async findById(id: number): Promise<PlaidItem | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM plaid_items WHERE id = ?',
+    const result = await pool.query(
+      'SELECT * FROM plaid_items WHERE id = $1',
       [id]
     );
-    return rows.length > 0 ? (rows[0] as PlaidItem) : null;
+    return result.rows.length > 0 ? (result.rows[0] as PlaidItem) : null;
   },
 
   async findByIdAndUser(id: number, userId: number): Promise<PlaidItem | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM plaid_items WHERE id = ? AND user_id = ?',
+    const result = await pool.query(
+      'SELECT * FROM plaid_items WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
-    return rows.length > 0 ? (rows[0] as PlaidItem) : null;
+    return result.rows.length > 0 ? (result.rows[0] as PlaidItem) : null;
   },
 
   async findByPlaidItemId(plaidItemId: string): Promise<PlaidItem | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM plaid_items WHERE plaid_item_id = ?',
+    const result = await pool.query(
+      'SELECT * FROM plaid_items WHERE plaid_item_id = $1',
       [plaidItemId]
     );
-    return rows.length > 0 ? (rows[0] as PlaidItem) : null;
+    return result.rows.length > 0 ? (result.rows[0] as PlaidItem) : null;
   },
 
   async findByUserId(userId: number): Promise<PlaidItem[]> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM plaid_items WHERE user_id = ? ORDER BY created_at DESC',
+    const result = await pool.query(
+      'SELECT * FROM plaid_items WHERE user_id = $1 ORDER BY created_at DESC',
       [userId]
     );
-    return rows as PlaidItem[];
+    return result.rows as PlaidItem[];
   },
 
   async create(data: CreatePlaidItemData): Promise<number> {
-    const [result] = await pool.execute<ResultSetHeader>(
+    const result = await pool.query(
       `INSERT INTO plaid_items (user_id, plaid_item_id, access_token_encrypted, institution_id, institution_name)
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [
         data.user_id,
         data.plaid_item_id,
@@ -71,15 +70,15 @@ export const PlaidItemModel = {
         data.institution_name || null,
       ]
     );
-    return result.insertId;
+    return result.rows[0].id;
   },
 
   async updateCursor(id: number, cursor: string): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE plaid_items SET cursor = ?, last_sync_at = NOW() WHERE id = ?',
+    const result = await pool.query(
+      'UPDATE plaid_items SET "cursor" = $1, last_sync_at = NOW() WHERE id = $2',
       [cursor, id]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async updateStatus(
@@ -88,11 +87,11 @@ export const PlaidItemModel = {
     errorCode?: string,
     errorMessage?: string
   ): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE plaid_items SET status = ?, error_code = ?, error_message = ? WHERE id = ?',
+    const result = await pool.query(
+      'UPDATE plaid_items SET status = $1, error_code = $2, error_message = $3 WHERE id = $4',
       [status, errorCode || null, errorMessage || null, id]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async updateStatusByPlaidItemId(
@@ -101,18 +100,18 @@ export const PlaidItemModel = {
     errorCode?: string,
     errorMessage?: string
   ): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE plaid_items SET status = ?, error_code = ?, error_message = ? WHERE plaid_item_id = ?',
+    const result = await pool.query(
+      'UPDATE plaid_items SET status = $1, error_code = $2, error_message = $3 WHERE plaid_item_id = $4',
       [status, errorCode || null, errorMessage || null, plaidItemId]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async delete(id: number, userId: number): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'DELETE FROM plaid_items WHERE id = ? AND user_id = ?',
+    const result = await pool.query(
+      'DELETE FROM plaid_items WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 };

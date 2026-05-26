@@ -1,5 +1,4 @@
 import pool from '../config/database';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export interface Category {
   id: number;
@@ -51,41 +50,41 @@ const DEFAULT_CATEGORIES = [
 
 export const CategoryModel = {
   async findById(id: number): Promise<Category | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM categories WHERE id = ?',
+    const result = await pool.query(
+      'SELECT * FROM categories WHERE id = $1',
       [id]
     );
-    return rows.length > 0 ? (rows[0] as Category) : null;
+    return result.rows.length > 0 ? (result.rows[0] as Category) : null;
   },
 
   async findByIdAndUser(id: number, userId: number): Promise<Category | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM categories WHERE id = ? AND user_id = ?',
+    const result = await pool.query(
+      'SELECT * FROM categories WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
-    return rows.length > 0 ? (rows[0] as Category) : null;
+    return result.rows.length > 0 ? (result.rows[0] as Category) : null;
   },
 
   async findByUserId(userId: number): Promise<Category[]> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM categories WHERE user_id = ? ORDER BY is_income DESC, sort_order, name',
+    const result = await pool.query(
+      'SELECT * FROM categories WHERE user_id = $1 ORDER BY is_income DESC, sort_order, name',
       [userId]
     );
-    return rows as Category[];
+    return result.rows as Category[];
   },
 
   async findByUserIdAndName(userId: number, name: string, parentId: number | null = null): Promise<Category | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM categories WHERE user_id = ? AND name = ? AND (parent_id = ? OR (parent_id IS NULL AND ? IS NULL))',
+    const result = await pool.query(
+      'SELECT * FROM categories WHERE user_id = $1 AND name = $2 AND (parent_id = $3::int OR (parent_id IS NULL AND $4::int IS NULL))',
       [userId, name, parentId, parentId]
     );
-    return rows.length > 0 ? (rows[0] as Category) : null;
+    return result.rows.length > 0 ? (result.rows[0] as Category) : null;
   },
 
   async create(data: CreateCategoryData): Promise<number> {
-    const [result] = await pool.execute<ResultSetHeader>(
+    const result = await pool.query(
       `INSERT INTO categories (user_id, parent_id, name, color, icon, is_income, is_system)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
       [
         data.user_id,
         data.parent_id || null,
@@ -96,71 +95,72 @@ export const CategoryModel = {
         data.is_system || false,
       ]
     );
-    return result.insertId;
+    return result.rows[0].id;
   },
 
   async update(id: number, userId: number, data: UpdateCategoryData): Promise<boolean> {
     const fields: string[] = [];
-    const values: (string | number | null)[] = [];
+    const values: (string | number | boolean | null)[] = [];
+    let p = 1;
 
     if (data.name !== undefined) {
-      fields.push('name = ?');
+      fields.push(`name = $${p++}`);
       values.push(data.name);
     }
     if (data.color !== undefined) {
-      fields.push('color = ?');
+      fields.push(`color = $${p++}`);
       values.push(data.color);
     }
     if (data.icon !== undefined) {
-      fields.push('icon = ?');
+      fields.push(`icon = $${p++}`);
       values.push(data.icon);
     }
     if (data.parent_id !== undefined) {
-      fields.push('parent_id = ?');
+      fields.push(`parent_id = $${p++}`);
       values.push(data.parent_id);
     }
     if (data.sort_order !== undefined) {
-      fields.push('sort_order = ?');
+      fields.push(`sort_order = $${p++}`);
       values.push(data.sort_order);
     }
     if (data.is_income !== undefined) {
-      fields.push('is_income = ?');
-      values.push(data.is_income ? 1 : 0);
+      fields.push(`is_income = $${p++}`);
+      values.push(data.is_income);
     }
 
     if (fields.length === 0) return false;
 
     values.push(id, userId);
-    const [result] = await pool.execute<ResultSetHeader>(
-      `UPDATE categories SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`,
+    const result = await pool.query(
+      `UPDATE categories SET ${fields.join(', ')} WHERE id = $${p++} AND user_id = $${p}`,
       values
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async delete(id: number, userId: number): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'DELETE FROM categories WHERE id = ? AND user_id = ?',
+    const result = await pool.query(
+      'DELETE FROM categories WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async createDefaultsForUser(userId: number): Promise<void> {
     for (const cat of DEFAULT_CATEGORIES) {
-      await pool.execute(
+      await pool.query(
         `INSERT INTO categories (user_id, name, color, icon, is_system, is_income)
-         VALUES (?, ?, ?, ?, TRUE, ?)`,
+         VALUES ($1, $2, $3, $4, TRUE, $5)`,
         [userId, cat.name, cat.color, cat.icon, cat.is_income]
       );
     }
   },
 
   async hasCategories(userId: number): Promise<boolean> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT 1 FROM categories WHERE user_id = ? LIMIT 1',
+    const result = await pool.query(
+      'SELECT 1 FROM categories WHERE user_id = $1 LIMIT 1',
       [userId]
     );
-    return rows.length > 0;
+    return result.rows.length > 0;
   },
 };

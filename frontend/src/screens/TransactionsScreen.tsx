@@ -20,6 +20,7 @@ export const TransactionsScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null | undefined>(undefined);
   const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(undefined);
@@ -131,6 +132,19 @@ export const TransactionsScreen: React.FC = () => {
     setSelectedAccountId(undefined);
     setStartDate('');
     setEndDate('');
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      setError(null);
+      await plaidService.refreshAll();
+      await loadTransactions();
+    } catch (err) {
+      setError(t('transactions.refreshError', 'Failed to refresh transactions'));
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   useEffect(() => {
@@ -395,6 +409,22 @@ export const TransactionsScreen: React.FC = () => {
       <div className="transactions-header">
         <h1>{t('transactions.title', 'Transactions')}</h1>
         <div className="transactions-header-actions">
+          <button
+            className="icon-button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title={t('transactions.refresh', 'Refresh')}
+          >
+            {refreshing ? (
+              <Spinner size="sm" />
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10" />
+                <polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+            )}
+          </button>
           <button
             className="icon-button"
             onClick={() => setColumnSettingsOpen(true)}

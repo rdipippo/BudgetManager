@@ -151,22 +151,78 @@ export const PlaidController = {
         return;
       }
 
-      // Sync accounts first
-      await TransactionSyncService.syncAccounts(itemId);
-
-      // Then sync transactions
-      const result = await TransactionSyncService.syncItem(itemId, req.userId!);
+      // Ask Plaid to pull the latest from the institution, then poll sync
+      // until new data arrives (refresh is async on Plaid's side). Refresh
+      // failures are non-fatal — the sync still runs and returns whatever
+      // data Plaid has cached.
+      const result = await TransactionSyncService.refreshItem(itemId, req.userId!);
+      console.log(
+        `[refresh] item ${itemId}: refreshed=${result.refreshed} ` +
+          `refreshError=${result.refreshError ?? 'none'} ` +
+          `attempts=${result.syncAttempts} ` +
+          `sandboxInjected=${result.sandboxInjected} ` +
+          `sandboxError=${result.sandboxError ?? 'none'} ` +
+          `added=${result.added} modified=${result.modified} removed=${result.removed}`
+      );
 
       res.json({
-        message: 'Sync completed',
+        message: result.refreshed ? 'Refresh + sync completed' : 'Sync completed',
         added: result.added,
         modified: result.modified,
         removed: result.removed,
         errors: result.errors,
+        refreshed: result.refreshed,
+        refreshError: result.refreshError,
+        syncAttempts: result.syncAttempts,
+        sandboxInjected: result.sandboxInjected,
+        sandboxError: result.sandboxError,
       });
     } catch (error) {
       console.error('Sync item error:', error);
       res.status(500).json({ error: 'Failed to sync transactions' });
+    }
+  },
+
+  /**
+   * Refresh every active Plaid item for the authenticated user. Used by the
+   * transactions-page refresh button, which isn't tied to a single linked
+   * institution. Returns per-item results and aggregate totals.
+   */
+  async refreshAll(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.userId) {
+        res.status(401).json({ error: 'Not authenticated' });
+        return;
+      }
+
+      const { items, totals } = await TransactionSyncService.refreshAllForUser(req.userId);
+      console.log(
+        `[refresh] user ${req.userId}: refreshed ${items.length} items ` +
+          `totalAdded=${totals.added} totalModified=${totals.modified} totalRemoved=${totals.removed}`
+      );
+
+      res.json({
+        message: 'Refresh + sync completed',
+        itemCount: items.length,
+        added: totals.added,
+        modified: totals.modified,
+        removed: totals.removed,
+        items: items.map(({ itemId, result }) => ({
+          itemId,
+          added: result.added,
+          modified: result.modified,
+          removed: result.removed,
+          errors: result.errors,
+          refreshed: result.refreshed,
+          refreshError: result.refreshError,
+          syncAttempts: result.syncAttempts,
+          sandboxInjected: result.sandboxInjected,
+          sandboxError: result.sandboxError,
+        })),
+      });
+    } catch (error) {
+      console.error('Refresh all error:', error);
+      res.status(500).json({ error: 'Failed to refresh transactions' });
     }
   },
 

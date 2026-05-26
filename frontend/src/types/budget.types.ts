@@ -134,3 +134,38 @@ export interface Pagination {
   offset: number;
   hasMore: boolean;
 }
+
+export type GoalType = 'save_balance' | 'pay_off_credit' | 'reduce_spending' | 'spend_target';
+export type GoalReductionType = 'fixed' | 'percent';
+
+export interface Goal {
+  id: number;
+  user_id: number;
+  name: string;
+  goal_type: GoalType;
+  plaid_account_id: number | null;
+  category_id: number | null;
+  target_amount: number | null;
+  baseline_amount: number | null;
+  target_balance: number | null;
+  baseline_total: number | null;
+  reduction_type: GoalReductionType | null;
+  reduction_amount: number | null;
+  target_date: string | null;
+  is_active: boolean;
+  category_name: string | null;
+  category_color: string | null;
+  category_icon: string | null;
+  account_name: string | null;
+  account_mask: string | null;
+  credit_account_ids: number[];
+  currentValue: number;
+  progressPercent: number;
+  isComplete: boolean;
+  daysRemaining: number | null;
+}
+
+export interface GoalProgressPoint {
+  recorded_date: string;
+  current_value: number;
+}

@@ -12,6 +12,8 @@ export { invitationService } from './invitation.service';
 export type { Invitation, Member, InvitationDetails } from './invitation.service';
 export { noteService } from './note.service';
 export type { Note, NoteEntityType, NoteParams } from './note.service';
+export { goalService } from './goal.service';
+export type { CreateGoalData, UpdateGoalData } from './goal.service';
 export type { TransactionColumnConfig } from './settings.service';
 export type {
   User,

@@ -42,6 +42,7 @@ router.delete('/items/:id', authMiddleware, canManageAccountsMiddleware, idParam
 // Read-only routes accessible to all (advisors and partial members can view accounts)
 router.get('/items', authMiddleware, PlaidController.getItems);
 router.post('/items/:id/sync', authMiddleware, idParamValidation, PlaidController.syncItem);
+router.post('/refresh-all', authMiddleware, PlaidController.refreshAll);
 router.get('/accounts/balance-history', authMiddleware, PlaidController.getBalanceHistory);
 router.patch('/accounts/:id/visibility', authMiddleware, visibilityValidation, PlaidController.setAccountVisibility);
 

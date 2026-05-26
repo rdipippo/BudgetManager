@@ -1,22 +1,26 @@
-import mysql from 'mysql2/promise';
+import { Pool } from 'pg';
 import { config } from './index';
 
-const pool = mysql.createPool({
-  host: config.db.host,
-  port: config.db.port,
-  database: config.db.name,
-  user: config.db.user,
-  password: config.db.password,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-});
+const pool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    })
+  : new Pool({
+      host: config.db.host,
+      port: config.db.port,
+      database: config.db.name,
+      user: config.db.user,
+      password: config.db.password,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
+    });
 
 export async function testConnection(): Promise<boolean> {
   try {
-    const connection = await pool.getConnection();
+    await pool.query('SELECT 1');
     console.log('Database connected successfully');
-    connection.release();
     return true;
   } catch (error) {
     console.error('Database connection failed:', error);

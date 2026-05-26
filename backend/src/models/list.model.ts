@@ -1,5 +1,4 @@
 import pool from '../config/database';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export interface List {
   id: number;
@@ -55,48 +54,48 @@ export interface UpdateListItemData {
 
 export const ListModel = {
   async findById(id: number): Promise<List | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM lists WHERE id = ?',
+    const result = await pool.query(
+      'SELECT * FROM lists WHERE id = $1',
       [id]
     );
-    return rows.length > 0 ? (rows[0] as List) : null;
+    return result.rows.length > 0 ? (result.rows[0] as List) : null;
   },
 
   async findByIdAndUser(id: number, userId: number): Promise<List | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM lists WHERE id = ? AND user_id = ?',
+    const result = await pool.query(
+      'SELECT * FROM lists WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
-    return rows.length > 0 ? (rows[0] as List) : null;
+    return result.rows.length > 0 ? (result.rows[0] as List) : null;
   },
 
   async findByUserId(userId: number): Promise<ListWithCounts[]> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const result = await pool.query(
       `SELECT l.*,
         COUNT(li.id) as item_count,
         SUM(CASE WHEN li.is_completed = TRUE THEN 1 ELSE 0 END) as completed_count
        FROM lists l
        LEFT JOIN list_items li ON li.list_id = l.id
-       WHERE l.user_id = ?
+       WHERE l.user_id = $1
        GROUP BY l.id
        ORDER BY l.updated_at DESC`,
       [userId]
     );
-    return rows as ListWithCounts[];
+    return result.rows as ListWithCounts[];
   },
 
   async findByUserIdAndName(userId: number, name: string): Promise<List | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM lists WHERE user_id = ? AND name = ?',
+    const result = await pool.query(
+      'SELECT * FROM lists WHERE user_id = $1 AND name = $2',
       [userId, name]
     );
-    return rows.length > 0 ? (rows[0] as List) : null;
+    return result.rows.length > 0 ? (result.rows[0] as List) : null;
   },
 
   async create(data: CreateListData): Promise<number> {
-    const [result] = await pool.execute<ResultSetHeader>(
+    const result = await pool.query(
       `INSERT INTO lists (user_id, name, color, icon)
-       VALUES (?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4) RETURNING id`,
       [
         data.user_id,
         data.name,
@@ -104,74 +103,75 @@ export const ListModel = {
         data.icon || 'list',
       ]
     );
-    return result.insertId;
+    return result.rows[0].id;
   },
 
   async update(id: number, userId: number, data: UpdateListData): Promise<boolean> {
     const fields: string[] = [];
     const values: (string | number | null)[] = [];
+    let p = 1;
 
     if (data.name !== undefined) {
-      fields.push('name = ?');
+      fields.push(`name = $${p++}`);
       values.push(data.name);
     }
     if (data.color !== undefined) {
-      fields.push('color = ?');
+      fields.push(`color = $${p++}`);
       values.push(data.color);
     }
     if (data.icon !== undefined) {
-      fields.push('icon = ?');
+      fields.push(`icon = $${p++}`);
       values.push(data.icon);
     }
 
     if (fields.length === 0) return false;
 
     values.push(id, userId);
-    const [result] = await pool.execute<ResultSetHeader>(
-      `UPDATE lists SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`,
+    const result = await pool.query(
+      `UPDATE lists SET ${fields.join(', ')} WHERE id = $${p++} AND user_id = $${p}`,
       values
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async delete(id: number, userId: number): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'DELETE FROM lists WHERE id = ? AND user_id = ?',
+    const result = await pool.query(
+      'DELETE FROM lists WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 };
 
 export const ListItemModel = {
   async findByListId(listId: number): Promise<ListItem[]> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM list_items WHERE list_id = ? ORDER BY is_completed ASC, sort_order ASC, created_at DESC',
+    const result = await pool.query(
+      'SELECT * FROM list_items WHERE list_id = $1 ORDER BY is_completed ASC, sort_order ASC, created_at DESC',
       [listId]
     );
-    return rows as ListItem[];
+    return result.rows as ListItem[];
   },
 
   async findById(id: number): Promise<ListItem | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM list_items WHERE id = ?',
+    const result = await pool.query(
+      'SELECT * FROM list_items WHERE id = $1',
       [id]
     );
-    return rows.length > 0 ? (rows[0] as ListItem) : null;
+    return result.rows.length > 0 ? (result.rows[0] as ListItem) : null;
   },
 
   async findByIdAndUser(id: number, userId: number): Promise<ListItem | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM list_items WHERE id = ? AND user_id = ?',
+    const result = await pool.query(
+      'SELECT * FROM list_items WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
-    return rows.length > 0 ? (rows[0] as ListItem) : null;
+    return result.rows.length > 0 ? (result.rows[0] as ListItem) : null;
   },
 
   async create(data: CreateListItemData): Promise<number> {
-    const [result] = await pool.execute<ResultSetHeader>(
+    const result = await pool.query(
       `INSERT INTO list_items (list_id, user_id, name, sort_order)
-       VALUES (?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4) RETURNING id`,
       [
         data.list_id,
         data.user_id,
@@ -179,49 +179,50 @@ export const ListItemModel = {
         data.sort_order || 0,
       ]
     );
-    return result.insertId;
+    return result.rows[0].id;
   },
 
   async update(id: number, userId: number, data: UpdateListItemData): Promise<boolean> {
     const fields: string[] = [];
-    const values: (string | number | null)[] = [];
+    const values: (string | number | boolean | null)[] = [];
+    let p = 1;
 
     if (data.name !== undefined) {
-      fields.push('name = ?');
+      fields.push(`name = $${p++}`);
       values.push(data.name);
     }
     if (data.is_completed !== undefined) {
-      fields.push('is_completed = ?');
-      values.push(data.is_completed ? 1 : 0);
+      fields.push(`is_completed = $${p++}`);
+      values.push(data.is_completed);
     }
     if (data.sort_order !== undefined) {
-      fields.push('sort_order = ?');
+      fields.push(`sort_order = $${p++}`);
       values.push(data.sort_order);
     }
 
     if (fields.length === 0) return false;
 
     values.push(id, userId);
-    const [result] = await pool.execute<ResultSetHeader>(
-      `UPDATE list_items SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`,
+    const result = await pool.query(
+      `UPDATE list_items SET ${fields.join(', ')} WHERE id = $${p++} AND user_id = $${p}`,
       values
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async toggleComplete(id: number, userId: number): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE list_items SET is_completed = NOT is_completed WHERE id = ? AND user_id = ?',
+    const result = await pool.query(
+      'UPDATE list_items SET is_completed = NOT is_completed WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async delete(id: number, userId: number): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'DELETE FROM list_items WHERE id = ? AND user_id = ?',
+    const result = await pool.query(
+      'DELETE FROM list_items WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 };

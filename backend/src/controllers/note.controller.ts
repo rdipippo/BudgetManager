@@ -2,7 +2,6 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware';
 import { NoteModel, NoteEntityType } from '../models/note.model';
 import pool from '../config/database';
-import { RowDataPacket } from 'mysql2';
 
 const VALID_ENTITY_TYPES: NoteEntityType[] = ['plaid_account', 'category', 'monthly_budget'];
 
@@ -18,21 +17,21 @@ async function verifyEntityAccess(
   }
 
   if (entityType === 'category') {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT id FROM categories WHERE id = ? AND user_id = ?',
+    const result = await pool.query(
+      'SELECT id FROM categories WHERE id = $1 AND user_id = $2',
       [entityId, userId]
     );
-    return rows.length > 0;
+    return result.rows.length > 0;
   }
 
   if (entityType === 'plaid_account') {
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const result = await pool.query(
       `SELECT pa.id FROM plaid_accounts pa
        JOIN plaid_items pi ON pa.item_id = pi.id
-       WHERE pa.id = ? AND pi.user_id = ?`,
+       WHERE pa.id = $1 AND pi.user_id = $2`,
       [entityId, userId]
     );
-    if (rows.length === 0) return false;
+    if (result.rows.length === 0) return false;
 
     // For partial members, also check allowedAccountIds
     if (req.allowedAccountIds && !req.allowedAccountIds.includes(entityId)) {

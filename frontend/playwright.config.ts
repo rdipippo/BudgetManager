@@ -24,6 +24,9 @@ export default defineConfig({
       port: 5000,
       reuseExistingServer: true,
       timeout: 60_000,
+      env: {
+        DISABLE_RATE_LIMIT: '1',
+      },
     },
     {
       command: 'npm run dev',

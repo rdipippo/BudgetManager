@@ -10,9 +10,9 @@ export const config = {
 
   db: {
     host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '3306', 10),
-    name: process.env.DB_NAME || 'account_manager',
-    user: process.env.DB_USER || 'root',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    name: process.env.DB_NAME || 'budget_manager',
+    user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || '',
   },
 

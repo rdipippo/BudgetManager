@@ -1,5 +1,4 @@
 import pool from '../config/database';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export interface User {
   id: number;
@@ -48,25 +47,25 @@ export interface MemberWithUser {
 
 export const UserModel = {
   async findById(id: number): Promise<User | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM users WHERE id = ?',
+    const result = await pool.query(
+      'SELECT * FROM users WHERE id = $1',
       [id]
     );
-    return rows.length > 0 ? (rows[0] as User) : null;
+    return result.rows.length > 0 ? (result.rows[0] as User) : null;
   },
 
   async findByEmail(email: string): Promise<User | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM users WHERE email = ?',
+    const result = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
       [email.toLowerCase()]
     );
-    return rows.length > 0 ? (rows[0] as User) : null;
+    return result.rows.length > 0 ? (result.rows[0] as User) : null;
   },
 
   async create(data: CreateUserData): Promise<number> {
-    const [result] = await pool.execute<ResultSetHeader>(
+    const result = await pool.query(
       `INSERT INTO users (email, password_hash, first_name, last_name, role, owner_user_id)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
       [
         data.email.toLowerCase(),
         data.password_hash,
@@ -76,31 +75,31 @@ export const UserModel = {
         data.owner_user_id || null,
       ]
     );
-    return result.insertId;
+    return result.rows[0].id;
   },
 
   async updatePassword(userId: number, passwordHash: string): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE users SET password_hash = ? WHERE id = ?',
+    const result = await pool.query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
       [passwordHash, userId]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async verifyEmail(userId: number): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE users SET email_verified = TRUE WHERE id = ?',
+    const result = await pool.query(
+      'UPDATE users SET email_verified = TRUE WHERE id = $1',
       [userId]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async exists(email: string): Promise<boolean> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT 1 FROM users WHERE email = ?',
+    const result = await pool.query(
+      'SELECT 1 FROM users WHERE email = $1',
       [email.toLowerCase()]
     );
-    return rows.length > 0;
+    return result.rows.length > 0;
   },
 
   toPublic(user: User): UserPublic {
@@ -118,56 +117,55 @@ export const UserModel = {
   },
 
   async findAll(): Promise<User[]> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const result = await pool.query(
       'SELECT * FROM users ORDER BY created_at DESC'
     );
-    return rows as User[];
+    return result.rows as User[];
   },
 
   async updateEnabled(userId: number, enabled: boolean): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE users SET enabled = ? WHERE id = ?',
+    const result = await pool.query(
+      'UPDATE users SET enabled = $1 WHERE id = $2',
       [enabled, userId]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async updateRole(userId: number, role: string): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE users SET role = ? WHERE id = ?',
+    const result = await pool.query(
+      'UPDATE users SET role = $1 WHERE id = $2',
       [role, userId]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   // Find enabled members of an owner's account
   async findMembersByOwner(ownerUserId: number): Promise<MemberWithUser[]> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const result = await pool.query(
       `SELECT id, email, first_name, last_name, role, enabled, created_at
        FROM users
-       WHERE owner_user_id = ? AND enabled = TRUE
+       WHERE owner_user_id = $1 AND enabled = TRUE
        ORDER BY created_at DESC`,
       [ownerUserId]
     );
-    return rows as MemberWithUser[];
+    return result.rows as MemberWithUser[];
   },
 
   // Check if a user with the given email is already an active member of the owner's account
   async isMemberByEmail(ownerUserId: number, email: string): Promise<boolean> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT 1 FROM users WHERE owner_user_id = ? AND email = ? AND enabled = TRUE',
+    const result = await pool.query(
+      'SELECT 1 FROM users WHERE owner_user_id = $1 AND email = $2 AND enabled = TRUE',
       [ownerUserId, email.toLowerCase()]
     );
-    return rows.length > 0;
+    return result.rows.length > 0;
   },
 
   // Disable a member (revoke access). Verifies owner to prevent unauthorized revocation.
   async disableMember(memberId: number, ownerUserId: number): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE users SET enabled = FALSE WHERE id = ? AND owner_user_id = ?',
+    const result = await pool.query(
+      'UPDATE users SET enabled = FALSE WHERE id = $1 AND owner_user_id = $2',
       [memberId, ownerUserId]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 };
-

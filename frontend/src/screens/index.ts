@@ -10,6 +10,8 @@ export { DashboardScreen } from './DashboardScreen';
 export { TransactionsScreen } from './TransactionsScreen';
 export { BudgetsScreen } from './BudgetsScreen';
 export { BudgetDetailScreen } from './BudgetDetailScreen';
+export { GoalsScreen } from './GoalsScreen';
+export { GoalDetailScreen } from './GoalDetailScreen';
 export { SettingsScreen } from './SettingsScreen';
 export { AccountsScreen } from './AccountsScreen';
 export { CategoriesScreen } from './CategoriesScreen';

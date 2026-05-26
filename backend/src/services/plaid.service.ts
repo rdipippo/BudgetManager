@@ -102,6 +102,33 @@ export const PlaidService = {
     }));
   },
 
+  /**
+   * Pulls *real-time* balances directly from the institution by calling
+   * `/accounts/balance/get`. This is the on-demand counterpart to
+   * `/transactions/refresh` — `accountsGet` returns whatever balance Plaid
+   * has cached, while `accountsBalanceGet` makes a live call upstream. It's
+   * slower (a few seconds against real banks; fast in Sandbox) and rate
+   * limits are stricter, so use it only when the user explicitly asks for
+   * fresh data (e.g. pressing the refresh button).
+   */
+  async getAccountsBalance(accessToken: string): Promise<PlaidAccountInfo[]> {
+    const response = await plaidClient.accountsBalanceGet({
+      access_token: accessToken,
+    });
+
+    return response.data.accounts.map((account) => ({
+      accountId: account.account_id,
+      name: account.name,
+      officialName: account.official_name || null,
+      type: account.type,
+      subtype: account.subtype || null,
+      mask: account.mask || null,
+      currentBalance: account.balances.current,
+      availableBalance: account.balances.available,
+      currencyCode: account.balances.iso_currency_code || null,
+    }));
+  },
+
   async getInstitution(accessToken: string): Promise<PlaidInstitutionInfo> {
     try {
       const itemResponse = await plaidClient.itemGet({
@@ -141,6 +168,48 @@ export const PlaidService = {
       hasMore: response.data.has_more,
       nextCursor: response.data.next_cursor,
     };
+  },
+
+  /**
+   * Asks Plaid to fetch the latest transactions from the institution right now,
+   * rather than waiting for Plaid's normal scheduled pull. This is the
+   * `/transactions/refresh` endpoint, which is a paid add-on — institutions or
+   * plans without it will return `PRODUCTS_NOT_SUPPORTED` / `PRODUCT_NOT_READY`.
+   * The refresh is asynchronous on Plaid's side; callers should wait briefly
+   * (or rely on the SYNC_UPDATES_AVAILABLE webhook) before running
+   * transactionsSync to pick up any new data.
+   */
+  async refreshTransactions(accessToken: string): Promise<void> {
+    await plaidClient.transactionsRefresh({
+      access_token: accessToken,
+    });
+  },
+
+  /**
+   * Sandbox-only. Injects custom transactions onto an Item that was created
+   * with the `user_transactions_dynamic` test user. Plaid commits the
+   * transactions before returning, so the next `/transactions/sync` call is
+   * guaranteed to see them. This bypasses the `transactions:refresh` add-on
+   * and works regardless of OAuth-vs-non-OAuth institution choice.
+   *
+   * Throws if the Item wasn't created with `user_transactions_dynamic` (Plaid
+   * returns `INVALID_FIELD` or similar). Up to 10 transactions per call.
+   */
+  async sandboxCreateTransactions(
+    accessToken: string,
+    transactions: Array<{
+      amount: number;
+      date_posted: string; // YYYY-MM-DD
+      date_transacted: string; // YYYY-MM-DD
+      description: string;
+      iso_currency_code?: string;
+    }>
+  ): Promise<{ requestId: string }> {
+    const response = await plaidClient.sandboxTransactionsCreate({
+      access_token: accessToken,
+      transactions,
+    });
+    return { requestId: response.data.request_id };
   },
 
   async removeItem(accessToken: string): Promise<void> {

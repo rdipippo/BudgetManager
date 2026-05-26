@@ -20,6 +20,16 @@ interface SyncResponse {
   modified: number;
   removed: number;
   errors: string[];
+  /** True if Plaid accepted the on-demand /transactions/refresh request. */
+  refreshed?: boolean;
+  /** Plaid error code if the on-demand refresh failed (sync still ran). */
+  refreshError?: string | null;
+  /** Number of /transactions/sync polling attempts that ran. */
+  syncAttempts?: number;
+  /** Sandbox-only: true if a mock transaction was injected as a fallback. */
+  sandboxInjected?: boolean;
+  /** Plaid error code from the sandbox-create fallback, if it failed. */
+  sandboxError?: string | null;
 }
 
 export const plaidService = {
@@ -40,6 +50,27 @@ export const plaidService = {
 
   async syncItem(itemId: number): Promise<SyncResponse> {
     const response = await api.post<SyncResponse>(`/plaid/items/${itemId}/sync`);
+    return response.data;
+  },
+
+  /**
+   * Refresh every linked Plaid item for the current user. Backed by the same
+   * refreshItem flow as `syncItem` (transactions/refresh + fresh balances +
+   * sync polling + sandbox fallback) but fanned out across all institutions.
+   * Used by the transactions-page refresh button.
+   */
+  async refreshAll(): Promise<{
+    itemCount: number;
+    added: number;
+    modified: number;
+    removed: number;
+  }> {
+    const response = await api.post<{
+      itemCount: number;
+      added: number;
+      modified: number;
+      removed: number;
+    }>('/plaid/refresh-all');
     return response.data;
   },
 

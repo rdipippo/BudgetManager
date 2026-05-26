@@ -1,5 +1,4 @@
 import pool from '../config/database';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export interface Budget {
   id: number;
@@ -42,48 +41,48 @@ export interface UpdateBudgetData {
 
 export const BudgetModel = {
   async findById(id: number): Promise<Budget | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM budgets WHERE id = ?',
+    const result = await pool.query(
+      'SELECT * FROM budgets WHERE id = $1',
       [id]
     );
-    return rows.length > 0 ? (rows[0] as Budget) : null;
+    return result.rows.length > 0 ? (result.rows[0] as Budget) : null;
   },
 
   async findByIdAndUser(id: number, userId: number): Promise<BudgetWithCategory | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const result = await pool.query(
       `SELECT b.*, c.name as category_name, c.color as category_color, c.icon as category_icon, c.is_income
        FROM budgets b
        INNER JOIN categories c ON b.category_id = c.id
-       WHERE b.id = ? AND b.user_id = ?`,
+       WHERE b.id = $1 AND b.user_id = $2`,
       [id, userId]
     );
-    return rows.length > 0 ? (rows[0] as BudgetWithCategory) : null;
+    return result.rows.length > 0 ? (result.rows[0] as BudgetWithCategory) : null;
   },
 
   async findByUserId(userId: number): Promise<BudgetWithCategory[]> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const result = await pool.query(
       `SELECT b.*, c.name as category_name, c.color as category_color, c.icon as category_icon, c.is_income
        FROM budgets b
        INNER JOIN categories c ON b.category_id = c.id
-       WHERE b.user_id = ? AND b.is_active = TRUE
+       WHERE b.user_id = $1 AND b.is_active = TRUE
        ORDER BY c.is_income DESC, c.name`,
       [userId]
     );
-    return rows as BudgetWithCategory[];
+    return result.rows as BudgetWithCategory[];
   },
 
   async findByUserIdAndCategory(userId: number, categoryId: number): Promise<Budget | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM budgets WHERE user_id = ? AND category_id = ?',
+    const result = await pool.query(
+      'SELECT * FROM budgets WHERE user_id = $1 AND category_id = $2',
       [userId, categoryId]
     );
-    return rows.length > 0 ? (rows[0] as Budget) : null;
+    return result.rows.length > 0 ? (result.rows[0] as Budget) : null;
   },
 
   async create(data: CreateBudgetData): Promise<number> {
-    const [result] = await pool.execute<ResultSetHeader>(
+    const result = await pool.query(
       `INSERT INTO budgets (user_id, category_id, amount, period_type, start_day)
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [
         data.user_id,
         data.category_id,
@@ -92,42 +91,43 @@ export const BudgetModel = {
         data.start_day || 1,
       ]
     );
-    return result.insertId;
+    return result.rows[0].id;
   },
 
   async update(id: number, userId: number, data: UpdateBudgetData): Promise<boolean> {
     const fields: string[] = [];
     const values: (number | boolean)[] = [];
+    let p = 1;
 
     if (data.amount !== undefined) {
-      fields.push('amount = ?');
+      fields.push(`amount = $${p++}`);
       values.push(data.amount);
     }
     if (data.start_day !== undefined) {
-      fields.push('start_day = ?');
+      fields.push(`start_day = $${p++}`);
       values.push(data.start_day);
     }
     if (data.is_active !== undefined) {
-      fields.push('is_active = ?');
+      fields.push(`is_active = $${p++}`);
       values.push(data.is_active);
     }
 
     if (fields.length === 0) return false;
 
     values.push(id, userId);
-    const [result] = await pool.execute<ResultSetHeader>(
-      `UPDATE budgets SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`,
+    const result = await pool.query(
+      `UPDATE budgets SET ${fields.join(', ')} WHERE id = $${p++} AND user_id = $${p}`,
       values
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async delete(id: number, userId: number): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'DELETE FROM budgets WHERE id = ? AND user_id = ?',
+    const result = await pool.query(
+      'DELETE FROM budgets WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   getCurrentPeriodDates(startDay: number = 1): { startDate: string; endDate: string } {

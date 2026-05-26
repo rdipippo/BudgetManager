@@ -1,5 +1,4 @@
 import pool from '../config/database';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export interface PlaidAccount {
   id: number;
@@ -33,45 +32,45 @@ export interface CreatePlaidAccountData {
 
 export const PlaidAccountModel = {
   async findById(id: number): Promise<PlaidAccount | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM plaid_accounts WHERE id = ?',
+    const result = await pool.query(
+      'SELECT * FROM plaid_accounts WHERE id = $1',
       [id]
     );
-    return rows.length > 0 ? (rows[0] as PlaidAccount) : null;
+    return result.rows.length > 0 ? (result.rows[0] as PlaidAccount) : null;
   },
 
   async findByPlaidAccountId(plaidAccountId: string): Promise<PlaidAccount | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM plaid_accounts WHERE plaid_account_id = ?',
+    const result = await pool.query(
+      'SELECT * FROM plaid_accounts WHERE plaid_account_id = $1',
       [plaidAccountId]
     );
-    return rows.length > 0 ? (rows[0] as PlaidAccount) : null;
+    return result.rows.length > 0 ? (result.rows[0] as PlaidAccount) : null;
   },
 
   async findByPlaidItemId(plaidItemId: number): Promise<PlaidAccount[]> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM plaid_accounts WHERE plaid_item_id = ? ORDER BY name',
+    const result = await pool.query(
+      'SELECT * FROM plaid_accounts WHERE plaid_item_id = $1 ORDER BY name',
       [plaidItemId]
     );
-    return rows as PlaidAccount[];
+    return result.rows as PlaidAccount[];
   },
 
   async findByUserId(userId: number): Promise<PlaidAccount[]> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
+    const result = await pool.query(
       `SELECT pa.* FROM plaid_accounts pa
        INNER JOIN plaid_items pi ON pa.plaid_item_id = pi.id
-       WHERE pi.user_id = ?
+       WHERE pi.user_id = $1
        ORDER BY pi.institution_name, pa.name`,
       [userId]
     );
-    return rows as PlaidAccount[];
+    return result.rows as PlaidAccount[];
   },
 
   async create(data: CreatePlaidAccountData): Promise<number> {
-    const [result] = await pool.execute<ResultSetHeader>(
+    const result = await pool.query(
       `INSERT INTO plaid_accounts
        (plaid_item_id, plaid_account_id, name, official_name, type, subtype, mask, current_balance, available_balance, currency_code)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
       [
         data.plaid_item_id,
         data.plaid_account_id,
@@ -85,7 +84,7 @@ export const PlaidAccountModel = {
         data.currency_code || 'USD',
       ]
     );
-    return result.insertId;
+    return result.rows[0].id;
   },
 
   async upsert(data: CreatePlaidAccountData): Promise<number> {
@@ -94,11 +93,11 @@ export const PlaidAccountModel = {
 
     if (existing) {
       // Update existing
-      await pool.execute(
+      await pool.query(
         `UPDATE plaid_accounts SET
-         name = ?, official_name = ?, type = ?, subtype = ?, mask = ?,
-         current_balance = ?, available_balance = ?, currency_code = ?
-         WHERE id = ?`,
+         name = $1, official_name = $2, type = $3, subtype = $4, mask = $5,
+         current_balance = $6, available_balance = $7, currency_code = $8
+         WHERE id = $9`,
         [
           data.name,
           data.official_name || null,
@@ -123,26 +122,26 @@ export const PlaidAccountModel = {
     currentBalance: number | null,
     availableBalance: number | null
   ): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE plaid_accounts SET current_balance = ?, available_balance = ? WHERE id = ?',
+    const result = await pool.query(
+      'UPDATE plaid_accounts SET current_balance = $1, available_balance = $2 WHERE id = $3',
       [currentBalance, availableBalance, id]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async setHidden(id: number, isHidden: boolean): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE plaid_accounts SET is_hidden = ? WHERE id = ?',
+    const result = await pool.query(
+      'UPDATE plaid_accounts SET is_hidden = $1 WHERE id = $2',
       [isHidden, id]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async deleteByPlaidItemId(plaidItemId: number): Promise<number> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'DELETE FROM plaid_accounts WHERE plaid_item_id = ?',
+    const result = await pool.query(
+      'DELETE FROM plaid_accounts WHERE plaid_item_id = $1',
       [plaidItemId]
     );
-    return result.affectedRows;
+    return result.rowCount ?? 0;
   },
 };

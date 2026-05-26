@@ -1,5 +1,4 @@
 import pool from '../config/database';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export interface Token {
   id: number;
@@ -17,32 +16,32 @@ export interface RefreshToken extends Token {
 // Email Verification Tokens
 export const EmailVerificationTokenModel = {
   async create(userId: number, tokenHash: string, expiresAt: Date): Promise<number> {
-    const [result] = await pool.execute<ResultSetHeader>(
+    const result = await pool.query(
       `INSERT INTO email_verification_tokens (user_id, token_hash, expires_at)
-       VALUES (?, ?, ?)`,
+       VALUES ($1, $2, $3) RETURNING id`,
       [userId, tokenHash, expiresAt]
     );
-    return result.insertId;
+    return result.rows[0].id;
   },
 
   async findByTokenHash(tokenHash: string): Promise<Token | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM email_verification_tokens WHERE token_hash = ?',
+    const result = await pool.query(
+      'SELECT * FROM email_verification_tokens WHERE token_hash = $1',
       [tokenHash]
     );
-    return rows.length > 0 ? (rows[0] as Token) : null;
+    return result.rows.length > 0 ? (result.rows[0] as Token) : null;
   },
 
   async markAsUsed(id: number): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE email_verification_tokens SET used = TRUE WHERE id = ?',
+    const result = await pool.query(
+      'UPDATE email_verification_tokens SET used = TRUE WHERE id = $1',
       [id]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async deleteByUserId(userId: number): Promise<void> {
-    await pool.execute('DELETE FROM email_verification_tokens WHERE user_id = ?', [userId]);
+    await pool.query('DELETE FROM email_verification_tokens WHERE user_id = $1', [userId]);
   },
 };
 
@@ -50,74 +49,74 @@ export const EmailVerificationTokenModel = {
 export const PasswordResetTokenModel = {
   async create(userId: number, tokenHash: string, expiresAt: Date): Promise<number> {
     // Invalidate any existing tokens for this user first
-    await pool.execute(
-      'UPDATE password_reset_tokens SET used = TRUE WHERE user_id = ? AND used = FALSE',
+    await pool.query(
+      'UPDATE password_reset_tokens SET used = TRUE WHERE user_id = $1 AND used = FALSE',
       [userId]
     );
 
-    const [result] = await pool.execute<ResultSetHeader>(
+    const result = await pool.query(
       `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
-       VALUES (?, ?, ?)`,
+       VALUES ($1, $2, $3) RETURNING id`,
       [userId, tokenHash, expiresAt]
     );
-    return result.insertId;
+    return result.rows[0].id;
   },
 
   async findByTokenHash(tokenHash: string): Promise<Token | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM password_reset_tokens WHERE token_hash = ?',
+    const result = await pool.query(
+      'SELECT * FROM password_reset_tokens WHERE token_hash = $1',
       [tokenHash]
     );
-    return rows.length > 0 ? (rows[0] as Token) : null;
+    return result.rows.length > 0 ? (result.rows[0] as Token) : null;
   },
 
   async markAsUsed(id: number): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE password_reset_tokens SET used = TRUE WHERE id = ?',
+    const result = await pool.query(
+      'UPDATE password_reset_tokens SET used = TRUE WHERE id = $1',
       [id]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 };
 
 // Refresh Tokens
 export const RefreshTokenModel = {
   async create(userId: number, tokenHash: string, expiresAt: Date): Promise<number> {
-    const [result] = await pool.execute<ResultSetHeader>(
+    const result = await pool.query(
       `INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
-       VALUES (?, ?, ?)`,
+       VALUES ($1, $2, $3) RETURNING id`,
       [userId, tokenHash, expiresAt]
     );
-    return result.insertId;
+    return result.rows[0].id;
   },
 
   async findByTokenHash(tokenHash: string): Promise<RefreshToken | null> {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT * FROM refresh_tokens WHERE token_hash = ?',
+    const result = await pool.query(
+      'SELECT * FROM refresh_tokens WHERE token_hash = $1',
       [tokenHash]
     );
-    return rows.length > 0 ? (rows[0] as RefreshToken) : null;
+    return result.rows.length > 0 ? (result.rows[0] as RefreshToken) : null;
   },
 
   async revoke(id: number): Promise<boolean> {
-    const [result] = await pool.execute<ResultSetHeader>(
-      'UPDATE refresh_tokens SET revoked = TRUE WHERE id = ?',
+    const result = await pool.query(
+      'UPDATE refresh_tokens SET revoked = TRUE WHERE id = $1',
       [id]
     );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async revokeAllForUser(userId: number): Promise<void> {
-    await pool.execute(
-      'UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = ?',
+    await pool.query(
+      'UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1',
       [userId]
     );
   },
 
   async deleteExpired(): Promise<number> {
-    const [result] = await pool.execute<ResultSetHeader>(
+    const result = await pool.query(
       'DELETE FROM refresh_tokens WHERE expires_at < NOW()'
     );
-    return result.affectedRows;
+    return result.rowCount ?? 0;
   },
 };
